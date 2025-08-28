@@ -1,15 +1,32 @@
+function isAlive(cell) {
+  return getComputedStyle(cell).backgroundColor === "rgb(0, 0, 0)";
+}
+
+function newCells(aliveCells) {
+  const neighbourgMatrix = [];
+  for (let i = 0; i < aliveCells.length - 1; i++) {
+    const newNeighbourgMatrixLine = [];
+    newNeighbourgMatrixLine.push([aliveCells[i].x, aliveCells[i].y]);
+    for (let j = i + 1; j < aliveCells.length; j++) {
+      newNeighbourgMatrixLine.push([
+        aliveCells[i].x - aliveCells[j].x,
+        aliveCells[i].y - aliveCells[j].y,
+      ]);
+    }
+    neighbourgMatrix.push(newNeighbourgMatrixLine);
+  }
+  console.log(neighbourgMatrix);
+}
+
 function launch(grid) {
   const aliveCells = [];
   for (let i = 0; i < grid.children.length; i++) {
     for (let j = 0; j < grid.children[i].children.length; j++) {
-      if (
-        getComputedStyle(grid.children[i].children[j]).backgroundColor ===
-        "rgb(0, 0, 0)"
-      ) {
+      isAlive(grid.children[i].children[j]) &&
         aliveCells.push({ x: j + 1, y: i + 1 });
-      }
     }
   }
+  newCells(aliveCells);
 }
 
 function createGrid(gridSize) {
