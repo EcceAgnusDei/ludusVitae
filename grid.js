@@ -3,19 +3,39 @@ function isAlive(cell) {
 }
 
 function newCells(aliveCells) {
-  const neighbourgMatrix = [];
   for (let i = 0; i < aliveCells.length - 1; i++) {
-    const newNeighbourgMatrixLine = [];
-    newNeighbourgMatrixLine.push([aliveCells[i].x, aliveCells[i].y]);
+    const newCells = [];
     for (let j = i + 1; j < aliveCells.length; j++) {
-      newNeighbourgMatrixLine.push([
-        aliveCells[i].x - aliveCells[j].x,
-        aliveCells[i].y - aliveCells[j].y,
-      ]);
+      if (
+        Math.abs(aliveCells[i].x - aliveCells[j].x) > 2 ||
+        Math.abs(aliveCells[i].y - aliveCells[j].y) > 2
+      )
+        break;
+      else {
+        switch (
+          JSON.stringify([
+            aliveCells[i].x - aliveCells[j].x,
+            aliveCells[i].y - aliveCells[j].y,
+          ])
+        ) {
+          case JSON.stringify([-2, -2]):
+            console.log("-2 -2");
+          case JSON.stringify([2, -2]):
+            console.log("2 -2");
+          case JSON.stringify([0, -2]):
+            console.log("0 -2");
+          case JSON.stringify([-2, 0]):
+            console.log("-2 0");
+          case JSON.stringify([-1, 0]):
+            console.log("0 -1");
+          case JSON.stringify([1, -2]):
+            console.log("1 -2");
+          case JSON.stringify([-1, -2]):
+            console.log("-1 -2");
+        }
+      }
     }
-    neighbourgMatrix.push(newNeighbourgMatrixLine);
   }
-  console.log(neighbourgMatrix);
 }
 
 function launch(grid) {
