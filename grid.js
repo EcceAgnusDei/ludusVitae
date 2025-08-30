@@ -12,40 +12,59 @@ function countNeighbour(coord) {
   }
 }
 
-function aliveCellsNext(aliveCells) {
-  const newAliveCells = [];
-  for (let i = 0; i < aliveCells.length - 1; i++) {
-    countNeighbour([aliveCells[0], aliveCells[1]]);
+function handleNeighbourNumber(cell, isDying = false) {
+  for (
+    let x = parseInt(cell.getAttribute("x")) - 1;
+    x <= parseInt(cell.getAttribute("x")) + 1;
+    x++
+  ) {
+    for (
+      let y = parseInt(cell.getAttribute("y")) - 1;
+      y <= parseInt(cell.getAttribute("y")) + 1;
+      y++
+    ) {
+      if (!(x == cell.getAttribute("x") && y == cell.getAttribute("y"))) {
+        const neighbour = document.querySelector(`[x="${x}"][y="${y}"]`);
+        const currentNb = parseInt(
+          neighbour.getAttribute("nbneighbour").replace("nb", "")
+        );
+        if (isDying) {
+          neighbour.setAttribute("nbneighbour", `nb${currentNb - 1}`);
+        } else {
+          neighbour.setAttribute("nbneighbour", `nb${currentNb + 1}`);
+        }
+      }
+    }
   }
-  return newCells;
 }
 
-function markAliveCells(aliveCells) {
-  aliveCells.array.forEach((cell) => {
-    document.querySelector(
-      `[x="${cell[0]}"][y="${cell[1]}"]`
-    ).style.backgroundColor = "black";
-  });
-}
+function aliveCellsNext(aliveCells) {
+  console.log(aliveCells);
+  const newAliveCells = [];
 
-function launch(grid) {
-  let aliveCells = getAliveCells(grid);
-  markAliveCells(aliveCells);
+  handleNeighbourNumber(aliveCells[0]);
+
+  return newAliveCells;
 }
 
 function getAliveCells(grid) {
   const aliveCells = [];
   for (let i = 0; i < grid.children.length; i++) {
     for (let j = 0; j < grid.children[i].children.length; j++) {
-      isAlive(grid.children[i].children[j]) && aliveCells.push([j + 1, i + 1]);
+      isAlive(grid.children[i].children[j]) &&
+        aliveCells.push(grid.children[i].children[j]);
     }
   }
   return aliveCells;
 }
 
+function launch(grid) {
+  let aliveCells = getAliveCells(grid);
+  aliveCells = aliveCellsNext(aliveCells);
+}
+
 function createGrid(gridSize) {
   const cellSize = "20px";
-  const grid = document.createElement("div");
   const lifeObserver = new MutationObserver((cells) => {
     cells.forEach((cell) => {
       if (cell.target.getAttribute("alive") === "true") {
@@ -55,6 +74,8 @@ function createGrid(gridSize) {
       }
     });
   });
+
+  const grid = document.createElement("div");
   for (let i = 0; i < gridSize; i++) {
     const line = document.createElement("div");
     line.style.display = "flex";
@@ -67,6 +88,7 @@ function createGrid(gridSize) {
       cell.setAttribute("x", `${j + 1}`);
       cell.setAttribute("y", `${i + 1}`);
       cell.setAttribute("alive", "false");
+      cell.setAttribute("nbNeighbour", "nb0");
       lifeObserver.observe(cell, { attributes: true });
       cell.onclick = (cell) => {
         if (cell.target.getAttribute("alive") === "false") {
@@ -80,6 +102,7 @@ function createGrid(gridSize) {
     grid.appendChild(line);
   }
   document.body.appendChild(grid);
+
   const startButton = document.createElement("button");
   startButton.innerText = "Start";
   document.body.appendChild(startButton);
