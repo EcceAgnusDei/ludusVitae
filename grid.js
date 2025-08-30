@@ -1,58 +1,60 @@
 function isAlive(cell) {
-  return getComputedStyle(cell).backgroundColor === "rgb(0, 0, 0)";
+  return cell.getAttribute("alive") === "true";
 }
 
-function newCells(aliveCells) {
-  for (let i = 0; i < aliveCells.length - 1; i++) {
-    const newCells = [];
-    for (let j = i + 1; j < aliveCells.length; j++) {
-      if (
-        Math.abs(aliveCells[i].x - aliveCells[j].x) > 2 ||
-        Math.abs(aliveCells[i].y - aliveCells[j].y) > 2
-      )
-        break;
-      else {
-        switch (
-          JSON.stringify([
-            aliveCells[i].x - aliveCells[j].x,
-            aliveCells[i].y - aliveCells[j].y,
-          ])
-        ) {
-          case JSON.stringify([-2, -2]):
-            console.log("-2 -2");
-          case JSON.stringify([2, -2]):
-            console.log("2 -2");
-          case JSON.stringify([0, -2]):
-            console.log("0 -2");
-          case JSON.stringify([-2, 0]):
-            console.log("-2 0");
-          case JSON.stringify([-1, 0]):
-            console.log("0 -1");
-          case JSON.stringify([1, -2]):
-            console.log("1 -2");
-          case JSON.stringify([-1, -2]):
-            console.log("-1 -2");
-        }
+function countNeighbour(coord) {
+  for (let x = coord[0] - 1; coord[0] + 1; x++) {
+    for (let y = coord[1] - 1; coord[1] + 1; y++) {
+      if (coord[0] != x && coord[1] != y) {
+        console.log("coucou");
       }
     }
   }
 }
 
+function aliveCellsNext(aliveCells) {
+  const newAliveCells = [];
+  for (let i = 0; i < aliveCells.length - 1; i++) {
+    countNeighbour([aliveCells[0], aliveCells[1]]);
+  }
+  return newCells;
+}
+
+function markAliveCells(aliveCells) {
+  aliveCells.array.forEach((cell) => {
+    document.querySelector(
+      `[x="${cell[0]}"][y="${cell[1]}"]`
+    ).style.backgroundColor = "black";
+  });
+}
+
 function launch(grid) {
+  let aliveCells = getAliveCells(grid);
+  markAliveCells(aliveCells);
+}
+
+function getAliveCells(grid) {
   const aliveCells = [];
   for (let i = 0; i < grid.children.length; i++) {
     for (let j = 0; j < grid.children[i].children.length; j++) {
-      isAlive(grid.children[i].children[j]) &&
-        aliveCells.push({ x: j + 1, y: i + 1 });
+      isAlive(grid.children[i].children[j]) && aliveCells.push([j + 1, i + 1]);
     }
   }
-  newCells(aliveCells);
+  return aliveCells;
 }
 
 function createGrid(gridSize) {
-  //alert("grid");
   const cellSize = "20px";
   const grid = document.createElement("div");
+  const lifeObserver = new MutationObserver((cells) => {
+    cells.forEach((cell) => {
+      if (cell.target.getAttribute("alive") === "true") {
+        cell.target.style.backgroundColor = "black";
+      } else {
+        cell.target.style.backgroundColor = "white";
+      }
+    });
+  });
   for (let i = 0; i < gridSize; i++) {
     const line = document.createElement("div");
     line.style.display = "flex";
@@ -64,9 +66,14 @@ function createGrid(gridSize) {
       cell.style.backgroundColor = "white";
       cell.setAttribute("x", `${j + 1}`);
       cell.setAttribute("y", `${i + 1}`);
-      cell.onclick = () => {
-        cell.style.backgroundColor =
-          cell.style.backgroundColor === "black" ? "white" : "black";
+      cell.setAttribute("alive", "false");
+      lifeObserver.observe(cell, { attributes: true });
+      cell.onclick = (cell) => {
+        if (cell.target.getAttribute("alive") === "false") {
+          cell.target.setAttribute("alive", "true");
+        } else {
+          cell.target.setAttribute("alive", "false");
+        }
       };
       line.appendChild(cell);
     }
@@ -77,7 +84,6 @@ function createGrid(gridSize) {
   startButton.innerText = "Start";
   document.body.appendChild(startButton);
   startButton.onclick = () => launch(grid);
-  //return grid;
 }
 
 export default createGrid;
