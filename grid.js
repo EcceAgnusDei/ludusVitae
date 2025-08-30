@@ -2,16 +2,6 @@ function isAlive(cell) {
   return cell.getAttribute("alive") === "true";
 }
 
-function countNeighbour(coord) {
-  for (let x = coord[0] - 1; coord[0] + 1; x++) {
-    for (let y = coord[1] - 1; coord[1] + 1; y++) {
-      if (coord[0] != x && coord[1] != y) {
-        console.log("coucou");
-      }
-    }
-  }
-}
-
 function handleNeighbourNumber(cell, isDying = false) {
   for (
     let x = parseInt(cell.getAttribute("x")) - 1;
@@ -38,15 +28,6 @@ function handleNeighbourNumber(cell, isDying = false) {
   }
 }
 
-function aliveCellsNext(aliveCells) {
-  console.log(aliveCells);
-  const newAliveCells = [];
-
-  handleNeighbourNumber(aliveCells[0]);
-
-  return newAliveCells;
-}
-
 function getAliveCells(grid) {
   const aliveCells = [];
   for (let i = 0; i < grid.children.length; i++) {
@@ -69,8 +50,28 @@ function createGrid(gridSize) {
     cells.forEach((cell) => {
       if (cell.target.getAttribute("alive") === "true") {
         cell.target.style.backgroundColor = "black";
+        handleNeighbourNumber(cell.target);
       } else {
         cell.target.style.backgroundColor = "white";
+        handleNeighbourNumber(cell.target, true);
+      }
+      if (cell.target.getAttribute("nbneighbour") === "nb3") {
+        console.log("bringg me to life");
+      }
+    });
+  });
+  const nbNeighbourObserver = new MutationObserver((cells) => {
+    cells.forEach((cell) => {
+      const nbNeighbour = parseInt(
+        cell.target.getAttribute("nbneighbour").replace("nb", "")
+      );
+
+      if (isAlive(cell.target)) {
+        if (nbNeighbour > 3 || nbNeighbour < 2) {
+        }
+      } else {
+        if (nbNeighbour === 3) {
+        }
       }
     });
   });
@@ -81,6 +82,7 @@ function createGrid(gridSize) {
     line.style.display = "flex";
     for (let j = 0; j < gridSize; j++) {
       const cell = document.createElement("div");
+
       cell.style.border = "1px solid black";
       cell.style.width = cellSize;
       cell.style.height = cellSize;
@@ -89,7 +91,15 @@ function createGrid(gridSize) {
       cell.setAttribute("y", `${i + 1}`);
       cell.setAttribute("alive", "false");
       cell.setAttribute("nbNeighbour", "nb0");
-      lifeObserver.observe(cell, { attributes: true });
+
+      lifeObserver.observe(cell, {
+        attributes: true,
+        attributeFilter: ["alive"],
+      });
+      nbNeighbourObserver.observe(cell, {
+        attribute: true,
+        attributeFilter: ["nbneighbour"],
+      });
       cell.onclick = (cell) => {
         if (cell.target.getAttribute("alive") === "false") {
           cell.target.setAttribute("alive", "true");
@@ -97,6 +107,7 @@ function createGrid(gridSize) {
           cell.target.setAttribute("alive", "false");
         }
       };
+
       line.appendChild(cell);
     }
     grid.appendChild(line);
