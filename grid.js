@@ -28,21 +28,6 @@ function handleNeighbourNumber(cell, isDying = false) {
   }
 }
 
-function getAliveCells(grid) {
-  const aliveCells = [];
-  for (let i = 0; i < grid.children.length; i++) {
-    for (let j = 0; j < grid.children[i].children.length; j++) {
-      isAlive(grid.children[i].children[j]) &&
-        aliveCells.push(grid.children[i].children[j]);
-    }
-  }
-  return aliveCells;
-}
-
-function StartButton() {
-  return startButton;
-}
-
 function Cell(x, y, cellSize = "20px") {
   const cell = document.createElement("div");
   cell.style.border = "1px solid black";
@@ -52,8 +37,11 @@ function Cell(x, y, cellSize = "20px") {
   cell.setAttribute("x", `${x}`);
   cell.setAttribute("y", `${y}`);
   cell.setAttribute("alive", "false");
-  cell.setAttribute("nbNeighbour", "nb0");
+  cell.setAttribute("willbealive", "false");
+  cell.setAttribute("nbneighbour", "nb0");
   cell.setAttribute("started", "false");
+
+  cell.style.color = "green";
 
   const lifeObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -71,17 +59,26 @@ function Cell(x, y, cellSize = "20px") {
       const nbNeighbour = parseInt(
         mutation.target.getAttribute("nbneighbour").replace("nb", "")
       );
+      mutation.target.innerText = nbNeighbour;
       if (mutation.target.getAttribute("started") === "true") {
         if (isAlive(mutation.target)) {
-          if (nbNeighbour > 3 || nbNeighbour < 2) {
-            mutation.target.setAttribute("alive", "false");
+          if (nbNeighbour < 2 || nbNeighbour > 3) {
+            mutation.target.setAttribute("willbealive", "false");
           }
-        } else {
-          if (nbNeighbour === 3) {
-            mutation.target.setAttribute("alive", "true");
-          }
+        } else if (nbNeighbour === 3) {
+          mutation.target.setAttribute("willbealive", "true");
         }
       }
+    });
+  });
+  const willBeAliveObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      setTimeout(() => {
+        mutation.target.setAttribute(
+          "alive",
+          mutation.target.getAttribute("willBeAlive")
+        );
+      }, 2000);
     });
   });
 
@@ -93,6 +90,11 @@ function Cell(x, y, cellSize = "20px") {
     attribute: true,
     attributeFilter: ["nbneighbour", "started"],
   });
+  willBeAliveObserver.observe(cell, {
+    attribute: true,
+    attributeFilter: ["willbealive"],
+  });
+
   cell.onclick = (cell) => {
     if (cell.target.getAttribute("alive") === "false") {
       cell.target.setAttribute("alive", "true");
