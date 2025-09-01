@@ -1,3 +1,3 @@
-import createGrid from "./grid.js";
+import Grid from "./grid.js";
 
-createGrid(10);
+document.body.appendChild(Grid(10));

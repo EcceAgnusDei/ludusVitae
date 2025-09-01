@@ -39,85 +39,109 @@ function getAliveCells(grid) {
   return aliveCells;
 }
 
-function launch(grid) {
-  let aliveCells = getAliveCells(grid);
-  aliveCells = aliveCellsNext(aliveCells);
+function StartButton() {
+  return startButton;
 }
 
-function createGrid(gridSize) {
-  const cellSize = "20px";
-  const lifeObserver = new MutationObserver((cells) => {
-    cells.forEach((cell) => {
-      if (cell.target.getAttribute("alive") === "true") {
-        cell.target.style.backgroundColor = "black";
-        handleNeighbourNumber(cell.target);
-      } else {
-        cell.target.style.backgroundColor = "white";
-        handleNeighbourNumber(cell.target, true);
-      }
-      if (cell.target.getAttribute("nbneighbour") === "nb3") {
-        console.log("bringg me to life");
-      }
-    });
-  });
-  const nbNeighbourObserver = new MutationObserver((cells) => {
-    cells.forEach((cell) => {
-      const nbNeighbour = parseInt(
-        cell.target.getAttribute("nbneighbour").replace("nb", "")
-      );
+function Cell(x, y, cellSize = "20px") {
+  const cell = document.createElement("div");
+  cell.style.border = "1px solid black";
+  cell.style.width = cellSize;
+  cell.style.height = cellSize;
+  cell.style.backgroundColor = "white";
+  cell.setAttribute("x", `${x}`);
+  cell.setAttribute("y", `${y}`);
+  cell.setAttribute("alive", "false");
+  cell.setAttribute("nbNeighbour", "nb0");
+  cell.setAttribute("started", "false");
 
-      if (isAlive(cell.target)) {
-        if (nbNeighbour > 3 || nbNeighbour < 2) {
-        }
+  const lifeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.target.getAttribute("alive") === "true") {
+        mutation.target.style.backgroundColor = "black";
+        handleNeighbourNumber(mutation.target);
       } else {
-        if (nbNeighbour === 3) {
+        mutation.target.style.backgroundColor = "white";
+        handleNeighbourNumber(mutation.target, true);
+      }
+    });
+  });
+  const nbNeighbourObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      const nbNeighbour = parseInt(
+        mutation.target.getAttribute("nbneighbour").replace("nb", "")
+      );
+      if (mutation.target.getAttribute("started") === "true") {
+        if (isAlive(mutation.target)) {
+          if (nbNeighbour > 3 || nbNeighbour < 2) {
+            mutation.target.setAttribute("alive", "false");
+          }
+        } else {
+          if (nbNeighbour === 3) {
+            mutation.target.setAttribute("alive", "true");
+          }
         }
       }
     });
   });
+
+  lifeObserver.observe(cell, {
+    attributes: true,
+    attributeFilter: ["alive"],
+  });
+  nbNeighbourObserver.observe(cell, {
+    attribute: true,
+    attributeFilter: ["nbneighbour", "started"],
+  });
+  cell.onclick = (cell) => {
+    if (cell.target.getAttribute("alive") === "false") {
+      cell.target.setAttribute("alive", "true");
+    } else {
+      cell.target.setAttribute("alive", "false");
+    }
+  };
+
+  return cell;
+}
+
+function Grid(gridSize, cellSize) {
+  const gridContainer = document.createElement("div");
 
   const grid = document.createElement("div");
-  for (let i = 0; i < gridSize; i++) {
+  for (let y = 1; y <= gridSize; y++) {
     const line = document.createElement("div");
     line.style.display = "flex";
-    for (let j = 0; j < gridSize; j++) {
-      const cell = document.createElement("div");
-
-      cell.style.border = "1px solid black";
-      cell.style.width = cellSize;
-      cell.style.height = cellSize;
-      cell.style.backgroundColor = "white";
-      cell.setAttribute("x", `${j + 1}`);
-      cell.setAttribute("y", `${i + 1}`);
-      cell.setAttribute("alive", "false");
-      cell.setAttribute("nbNeighbour", "nb0");
-
-      lifeObserver.observe(cell, {
-        attributes: true,
-        attributeFilter: ["alive"],
-      });
-      nbNeighbourObserver.observe(cell, {
-        attribute: true,
-        attributeFilter: ["nbneighbour"],
-      });
-      cell.onclick = (cell) => {
-        if (cell.target.getAttribute("alive") === "false") {
-          cell.target.setAttribute("alive", "true");
-        } else {
-          cell.target.setAttribute("alive", "false");
-        }
-      };
-
-      line.appendChild(cell);
+    for (let x = 1; x <= gridSize; x++) {
+      line.appendChild(Cell(x, y, cellSize));
     }
     grid.appendChild(line);
   }
-  document.body.appendChild(grid);
 
   const startButton = document.createElement("button");
   startButton.innerText = "Start";
-  document.body.appendChild(startButton);
-  startButton.onclick = () => launch(grid);
+  startButton.onclick = () => {
+    grid.childNodes.forEach((line) => {
+      line.childNodes.forEach((cell) => {
+        cell.setAttribute("started", "true");
+      });
+    });
+  };
+
+  const stopButton = document.createElement("button");
+  stopButton.innerText = "Stop";
+  stopButton.onclick = () => {
+    grid.childNodes.forEach((line) => {
+      line.childNodes.forEach((cell) => {
+        cell.setAttribute("started", "false");
+      });
+    });
+  };
+
+  gridContainer.appendChild(grid);
+  gridContainer.appendChild(startButton);
+  gridContainer.appendChild(stopButton);
+
+  return gridContainer;
 }
 
-export default createGrid;
+export default Grid;
