@@ -110,6 +110,8 @@ function Cell(x, y, cellSize = "20px") {
 
 function Grid(gridSize, cellSize) {
   const grid = document.createElement("div");
+  grid.setAttribute("id", "grid");
+  grid.style.width = "fit-content";
 
   for (let y = 1; y <= gridSize; y++) {
     const line = document.createElement("div");
@@ -125,7 +127,11 @@ function Grid(gridSize, cellSize) {
 
 function Game() {
   const game = document.createElement("div");
-  const grid = Grid(10, "20px");
+  game.setAttribute("id", "game");
+
+  let cellSize = "20px";
+  let gridSize = 10;
+  let grid = Grid(gridSize, cellSize);
 
   let generationInterval;
   const interval = 3000;
@@ -155,9 +161,70 @@ function Game() {
     }
   };
 
-  game.appendChild(grid);
+  const gridSizeInput = document.createElement("input");
+  gridSizeInput.setAttribute("type", "input");
+  gridSizeInput.setAttribute("name", "gridsize");
+  gridSizeInput.setAttribute("placeholder", "Taille de la grille");
+
+  const gridSizeButton = document.createElement("button");
+  gridSizeButton.innerText = "Ok";
+  gridSizeButton.onclick = () => {
+    if (
+      parseInt(gridSizeInput.value) > 0 &&
+      parseInt(gridSizeInput.value) < 101
+    ) {
+      gridContainer.removeChild(grid);
+      gridSize = parseInt(gridSizeInput.value);
+      grid = Grid(gridSize, cellSize);
+      gridContainer.appendChild(grid);
+      gridSizeInput.value = "";
+    } else {
+      gridSizeInput.value = "";
+      alert("Veuillez entrer une valeur valide.");
+    }
+  };
+
+  const gridSizeContainer = document.createElement("div");
+  gridSizeContainer.appendChild(gridSizeInput);
+  gridSizeContainer.appendChild(gridSizeButton);
+
+  const cellSizeInput = document.createElement("input");
+  cellSizeInput.setAttribute("type", "input");
+  cellSizeInput.setAttribute("name", "cellSize");
+  cellSizeInput.setAttribute("placeholder", "Taille d'une cellule");
+
+  const cellSizeButton = document.createElement("button");
+  cellSizeButton.innerText = "Ok";
+  cellSizeButton.onclick = () => {
+    if (
+      parseInt(cellSizeInput.value) > 1 &&
+      parseInt(cellSizeInput.value) < 71
+    ) {
+      cellSize = parseInt(cellSizeInput.value) + "px";
+      gridContainer.removeChild(grid);
+      grid = Grid(gridSize, cellSize);
+      gridContainer.appendChild(grid);
+      cellSizeInput.value = "";
+    } else {
+      cellSizeInput.value = "";
+      alert("Veuillez entrer une valeur valide.");
+    }
+  };
+
+  const cellSizeContainer = document.createElement("div");
+  cellSizeContainer.appendChild(cellSizeInput);
+  cellSizeContainer.appendChild(cellSizeButton);
+
+  const gridContainer = document.createElement("div");
+  gridContainer.setAttribute("id", "gridcontainer");
+  gridContainer.style.overflow = "auto";
+  gridContainer.appendChild(grid);
+
+  game.appendChild(gridContainer);
   game.appendChild(startButton);
   game.appendChild(speedSlider);
+  game.appendChild(gridSizeContainer);
+  game.appendChild(cellSizeContainer);
 
   return game;
 }
