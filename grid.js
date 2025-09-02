@@ -38,7 +38,7 @@ function Cell(x, y, cellSize = "20px") {
   cell.setAttribute("y", `${y}`);
   cell.setAttribute("alive", "false");
   cell.setAttribute("nbneighbour", "nb0");
-  cell.setAttribute("time", "t0");
+  cell.setAttribute("willbealive", "false");
 
   cell.style.color = "green";
 
@@ -53,10 +53,41 @@ function Cell(x, y, cellSize = "20px") {
       }
     });
   });
+  const neighbourObserver = new MutationObserver((neighbourMutations) => {
+    neighbourMutations.forEach((mutation) => {
+      mutation.target.innerText = mutation.target
+        .getAttribute("nbneighbour")
+        .replace("nb", "");
+      const nbNeighbour = parseInt(
+        mutation.target.getAttribute("nbneighbour").replace("nb", "")
+      );
+
+      if (isAlive(mutation.target)) {
+        console.log(
+          mutation.target.getAttribute("x"),
+          mutation.target.getAttribute("y"),
+          " is alive"
+        );
+        if (nbNeighbour < 2 || nbNeighbour > 3) {
+          mutation.target.setAttribute("willbealive", "false");
+        } else {
+          mutation.target.setAttribute("willbealive", "true");
+        }
+      } else if (nbNeighbour === 3) {
+        mutation.target.setAttribute("willbealive", "true");
+      } else {
+        mutation.target.setAttribute("willbealive", "false");
+      }
+    });
+  });
 
   lifeObserver.observe(cell, {
     attributes: true,
     attributeFilter: ["alive"],
+  });
+  neighbourObserver.observe(cell, {
+    attributes: true,
+    attributeFilter: ["nbneighbour"],
   });
   cell.onclick = (cell) => {
     if (cell.target.getAttribute("alive") === "false") {
@@ -65,56 +96,16 @@ function Cell(x, y, cellSize = "20px") {
       cell.target.setAttribute("alive", "false");
     }
   };
-  setInterval(() => {
-    const currentlyAlive = isAlive(cell);
-    const nbNeighbour = parseInt(
-      cell.getAttribute("nbneighbour").replace("nb", "")
-    );
-    cell.getAttribute("x") == 4 &&
-      cell.getAttribute("y") == 3 &&
-      console.log(
-        cell.getAttribute("x"),
-        cell.getAttribute("y"),
-        "nb",
-        nbNeighbour
-      );
-
-    cell.innerText = nbNeighbour;
-
-    if (cell.getAttribute("started") === "true") {
-      let isCellAlive = currentlyAlive;
-      if (isCellAlive) {
-        if (nbNeighbour < 2 || nbNeighbour > 3) {
-          cell.getAttribute("x") == 4 &&
-            cell.getAttribute("y") == 3 &&
-            console.log(
-              "dying",
-              cell.getAttribute("x"),
-              cell.getAttribute("y"),
-              "cause",
-              nbNeighbour
-            );
-          isCellAlive = false;
-        }
-      } else if (nbNeighbour === 3) {
-        isCellAlive = true;
-      }
-
-      //l'évènement ne doit se déclencher que si il y a changement d'état
-      currentlyAlive != isCellAlive &&
-        cell.setAttribute("alive", `${isCellAlive}`);
-    }
-  }, 5000);
 
   return cell;
 }
 
 function start(grid, interval) {
-  setInterval(() => {
+  return setInterval(() => {
     grid.childNodes.forEach((line) => {
-      line.forEach((cell) => {
-        const time = parseInt(cell.getAttribute("time").replace("t", ""));
-        cell.setAttribute("time", `t${time + 1}`);
+      line.childNodes.forEach((cell) => {
+        cell.getAttribute("alive") != cell.getAttribute("willbealive") &&
+          cell.setAttribute("alive", cell.getAttribute("willbealive"));
       });
     });
   }, interval);
@@ -124,6 +115,18 @@ function Grid(gridSize, cellSize) {
   const gridContainer = document.createElement("div");
 
   const grid = document.createElement("div");
+  grid.setAttribute("time", "t0");
+
+  let generationInterval;
+
+  const timeObserver = new MutationObserver((timeMutations) => {
+    timeMutations.forEach((timeMutation) => {
+      timeMutation.target.childNodes.forEach((line) => {
+        line.forEach((cell) => {});
+      });
+    });
+  });
+
   for (let y = 1; y <= gridSize; y++) {
     const line = document.createElement("div");
     line.style.display = "flex";
@@ -134,22 +137,19 @@ function Grid(gridSize, cellSize) {
   }
 
   const startButton = document.createElement("button");
-  startButton.innerText = "Start";
-  startButton.onclick = () => start(grid, 3000);
-
-  const stopButton = document.createElement("button");
-  stopButton.innerText = "Stop";
-  stopButton.onclick = () => {
-    grid.childNodes.forEach((line) => {
-      line.childNodes.forEach((cell) => {
-        cell.setAttribute("started", "false");
-      });
-    });
+  startButton.innerText = "Play";
+  startButton.onclick = (event) => {
+    if (event.target.innerText === "Play") {
+      generationInterval = start(grid, 3000);
+      event.target.innerText = "Stop";
+    } else {
+      clearInterval(generationInterval);
+      event.target.innerText = "Play";
+    }
   };
 
   gridContainer.appendChild(grid);
   gridContainer.appendChild(startButton);
-  gridContainer.appendChild(stopButton);
 
   return gridContainer;
 }
