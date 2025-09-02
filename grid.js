@@ -15,13 +15,15 @@ function handleNeighbourNumber(cell, isDying = false) {
     ) {
       if (!(x == cell.getAttribute("x") && y == cell.getAttribute("y"))) {
         const neighbour = document.querySelector(`[x="${x}"][y="${y}"]`);
-        const currentNb = parseInt(
-          neighbour.getAttribute("nbneighbour").replace("nb", "")
-        );
-        if (isDying) {
-          neighbour.setAttribute("nbneighbour", `nb${currentNb - 1}`);
-        } else {
-          neighbour.setAttribute("nbneighbour", `nb${currentNb + 1}`);
+        if (neighbour) {
+          const currentNb = parseInt(
+            neighbour.getAttribute("nbneighbour").replace("nb", "")
+          );
+          if (isDying) {
+            neighbour.setAttribute("nbneighbour", `nb${currentNb - 1}`);
+          } else {
+            neighbour.setAttribute("nbneighbour", `nb${currentNb + 1}`);
+          }
         }
       }
     }
@@ -63,11 +65,6 @@ function Cell(x, y, cellSize = "20px") {
       );
 
       if (isAlive(mutation.target)) {
-        console.log(
-          mutation.target.getAttribute("x"),
-          mutation.target.getAttribute("y"),
-          " is alive"
-        );
         if (nbNeighbour < 2 || nbNeighbour > 3) {
           mutation.target.setAttribute("willbealive", "false");
         } else {
@@ -115,9 +112,9 @@ function Grid(gridSize, cellSize) {
   const gridContainer = document.createElement("div");
 
   const grid = document.createElement("div");
-  grid.setAttribute("time", "t0");
 
   let generationInterval;
+  const interval = 3000;
 
   const timeObserver = new MutationObserver((timeMutations) => {
     timeMutations.forEach((timeMutation) => {
@@ -136,12 +133,25 @@ function Grid(gridSize, cellSize) {
     grid.appendChild(line);
   }
 
+  const speedSlider = document.createElement("input");
+  speedSlider.setAttribute("type", "range");
+  speedSlider.setAttribute("min", "1");
+  speedSlider.setAttribute("max", "100");
+  speedSlider.setAttribute("value", "1");
+  speedSlider.addEventListener("input", () => {
+    clearInterval(generationInterval);
+
+    if (startButton.innerText === "Pause") {
+      generationInterval = start(grid, interval / speedSlider.value);
+    }
+  });
+
   const startButton = document.createElement("button");
   startButton.innerText = "Play";
   startButton.onclick = (event) => {
     if (event.target.innerText === "Play") {
-      generationInterval = start(grid, 3000);
-      event.target.innerText = "Stop";
+      generationInterval = start(grid, interval / speedSlider.value);
+      event.target.innerText = "Pause";
     } else {
       clearInterval(generationInterval);
       event.target.innerText = "Play";
@@ -150,7 +160,7 @@ function Grid(gridSize, cellSize) {
 
   gridContainer.appendChild(grid);
   gridContainer.appendChild(startButton);
-
+  gridContainer.appendChild(speedSlider);
   return gridContainer;
 }
 
