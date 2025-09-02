@@ -30,6 +30,17 @@ function handleNeighbourNumber(cell, isDying = false) {
   }
 }
 
+function start(grid, interval) {
+  return setInterval(() => {
+    grid.childNodes.forEach((line) => {
+      line.childNodes.forEach((cell) => {
+        cell.getAttribute("alive") != cell.getAttribute("willbealive") &&
+          cell.setAttribute("alive", cell.getAttribute("willbealive"));
+      });
+    });
+  }, interval);
+}
+
 function Cell(x, y, cellSize = "20px") {
   const cell = document.createElement("div");
   cell.style.border = "1px solid black";
@@ -97,32 +108,8 @@ function Cell(x, y, cellSize = "20px") {
   return cell;
 }
 
-function start(grid, interval) {
-  return setInterval(() => {
-    grid.childNodes.forEach((line) => {
-      line.childNodes.forEach((cell) => {
-        cell.getAttribute("alive") != cell.getAttribute("willbealive") &&
-          cell.setAttribute("alive", cell.getAttribute("willbealive"));
-      });
-    });
-  }, interval);
-}
-
 function Grid(gridSize, cellSize) {
-  const gridContainer = document.createElement("div");
-
   const grid = document.createElement("div");
-
-  let generationInterval;
-  const interval = 3000;
-
-  const timeObserver = new MutationObserver((timeMutations) => {
-    timeMutations.forEach((timeMutation) => {
-      timeMutation.target.childNodes.forEach((line) => {
-        line.forEach((cell) => {});
-      });
-    });
-  });
 
   for (let y = 1; y <= gridSize; y++) {
     const line = document.createElement("div");
@@ -132,6 +119,16 @@ function Grid(gridSize, cellSize) {
     }
     grid.appendChild(line);
   }
+
+  return grid;
+}
+
+function Game() {
+  const game = document.createElement("div");
+  const grid = Grid(10, "20px");
+
+  let generationInterval;
+  const interval = 3000;
 
   const speedSlider = document.createElement("input");
   speedSlider.setAttribute("type", "range");
@@ -158,10 +155,11 @@ function Grid(gridSize, cellSize) {
     }
   };
 
-  gridContainer.appendChild(grid);
-  gridContainer.appendChild(startButton);
-  gridContainer.appendChild(speedSlider);
-  return gridContainer;
+  game.appendChild(grid);
+  game.appendChild(startButton);
+  game.appendChild(speedSlider);
+
+  return game;
 }
 
-export default Grid;
+export default Game();
