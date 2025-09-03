@@ -1,8 +1,10 @@
+const trackedCells = [];
+
 function isAlive(cell) {
-  return cell.getAttribute("alive") === "true";
+  return cell.style.backgroundColor === "black";
 }
 
-function handleNeighbourNumber(cell, isDying = false) {
+/*function handleNeighbourNumber(cell, isDying = false) {
   for (
     let x = parseInt(cell.getAttribute("x")) - 1;
     x <= parseInt(cell.getAttribute("x")) + 1;
@@ -28,17 +30,65 @@ function handleNeighbourNumber(cell, isDying = false) {
       }
     }
   }
+}*/
+
+function pushCell(x, y, isDying) {
+  const cellIndex = trackedCells.findIndex((cell) => {
+    return cell.x == x && cell.y == y;
+  });
+  console.log(cellIndex, x, y);
+  if (isDying) {
+    trackedCells[cellIndex].isAlive = false;
+    for (let nbx = x - 1; nbx <= x + 1; nbx++) {
+      for (let nby = y - 1; nby <= y + 1; nby++) {
+        if (nbx != x || nby != y) {
+          const nbIndex = trackedCells.findIndex((cell) => {
+            return cell.x == nbx && cell.y == nby;
+          });
+          trackedCells[nbIndex].neighbours--;
+          if (
+            !trackedCells[nbIndex].isAlive &&
+            trackedCells[nbIndex].neighbours == 0
+          ) {
+            trackedCells.splice(nbIndex, 1);
+          }
+        }
+      }
+    }
+    if (trackedCells[cellIndex].neighbours == 0) {
+      trackedCells.splice(cellIndex, 1);
+    }
+  } else {
+    if (cellIndex == -1) {
+      trackedCells.push({ x, y, neighbours: 0, isAlive: true });
+    } else {
+      trackedCells[cellIndex].isAlive = true;
+    }
+    for (let nbx = x - 1; nbx <= x + 1; nbx++) {
+      for (let nby = y - 1; nby <= y + 1; nby++) {
+        if (nbx != x || nby != y) {
+          const nbIndex = trackedCells.findIndex((cell) => {
+            return cell.x == nbx && cell.y == nby;
+          });
+          if (nbIndex == -1) {
+            trackedCells.push({
+              x: nbx,
+              y: nby,
+              neighbours: 1,
+              isAlive: false,
+            });
+          } else {
+            trackedCells[nbIndex].neighbours++;
+          }
+        }
+      }
+    }
+  }
+  console.log(trackedCells);
 }
 
 function start(grid, interval) {
-  return setInterval(() => {
-    grid.childNodes.forEach((line) => {
-      line.childNodes.forEach((cell) => {
-        cell.getAttribute("alive") != cell.getAttribute("willbealive") &&
-          cell.setAttribute("alive", cell.getAttribute("willbealive"));
-      });
-    });
-  }, interval);
+  return setInterval(() => {}, interval);
 }
 
 function Cell(x, y, cellSize = "20px") {
@@ -49,13 +99,13 @@ function Cell(x, y, cellSize = "20px") {
   cell.style.backgroundColor = "white";
   cell.setAttribute("x", `${x}`);
   cell.setAttribute("y", `${y}`);
-  cell.setAttribute("alive", "false");
-  cell.setAttribute("nbneighbour", "nb0");
-  cell.setAttribute("willbealive", "false");
+  //cell.setAttribute("alive", "false");
+  //cell.setAttribute("nbneighbour", "nb0");
+  //cell.setAttribute("willbealive", "false");
 
   cell.style.color = "green";
 
-  const lifeObserver = new MutationObserver((mutations) => {
+  /*const lifeObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.target.getAttribute("alive") === "true") {
         mutation.target.style.backgroundColor = "black";
@@ -65,8 +115,8 @@ function Cell(x, y, cellSize = "20px") {
         handleNeighbourNumber(mutation.target, true);
       }
     });
-  });
-  const neighbourObserver = new MutationObserver((neighbourMutations) => {
+  });*/
+  /*const neighbourObserver = new MutationObserver((neighbourMutations) => {
     neighbourMutations.forEach((mutation) => {
       mutation.target.innerText = mutation.target
         .getAttribute("nbneighbour")
@@ -87,21 +137,31 @@ function Cell(x, y, cellSize = "20px") {
         mutation.target.setAttribute("willbealive", "false");
       }
     });
-  });
+  });*/
 
-  lifeObserver.observe(cell, {
+  /*lifeObserver.observe(cell, {
     attributes: true,
     attributeFilter: ["alive"],
-  });
-  neighbourObserver.observe(cell, {
+  });*/
+  /*neighbourObserver.observe(cell, {
     attributes: true,
     attributeFilter: ["nbneighbour"],
-  });
+  });*/
   cell.onclick = (cell) => {
-    if (cell.target.getAttribute("alive") === "false") {
-      cell.target.setAttribute("alive", "true");
+    if (isAlive(cell.target)) {
+      cell.target.style.backgroundColor = "white";
+      pushCell(
+        parseInt(cell.target.getAttribute("x")),
+        parseInt(cell.target.getAttribute("y")),
+        true
+      );
     } else {
-      cell.target.setAttribute("alive", "false");
+      cell.target.style.backgroundColor = "black";
+      pushCell(
+        parseInt(cell.target.getAttribute("x")),
+        parseInt(cell.target.getAttribute("y")),
+        false
+      );
     }
   };
 
