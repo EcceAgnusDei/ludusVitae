@@ -1,3 +1,3 @@
-import Game from "./grid.js";
+import Game from "./game.js";
 
 document.body.appendChild(Game);
