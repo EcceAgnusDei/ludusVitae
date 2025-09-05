@@ -1,9 +1,19 @@
 let trackedCells = [];
-//let isPlaying = false; //isPlaying est inaccessible au bouton start
-//transformer la fonction start en objet
+let cellSize = "20px";
+let gridSize = 10;
+let grid = Grid(gridSize, cellSize);
+const maxInterval = 2000;
 
 function isAlive(cell) {
   return cell.style.backgroundColor === "black";
+}
+
+function isOnGrid(cell) {
+  if (cell.x > 0 && cell.x <= gridSize && cell.y > 0 && cell.y <= gridSize) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function cellIndex(cellCoord) {
@@ -12,6 +22,7 @@ function cellIndex(cellCoord) {
   });
 }
 
+//gère le changement d'état de vie d'une cellule
 function handleLife(cellCoord, isDying) {
   if (
     trackedCells.findIndex((trackedCell) => {
@@ -43,7 +54,7 @@ function handleLife(cellCoord, isDying) {
       trackedCells[cellIndex(cellCoord)].isAlive = true;
       for (let x = cellCoord.x - 1; x <= cellCoord.x + 1; x++) {
         for (let y = cellCoord.y - 1; y <= cellCoord.y + 1; y++) {
-          if (x != cellCoord.x || y != cellCoord.y) {
+          if ((x != cellCoord.x || y != cellCoord.y) && isOnGrid({ x, y })) {
             const index = trackedCells.findIndex((trackedCell) => {
               return x == trackedCell.x && y == trackedCell.y;
             });
@@ -71,19 +82,35 @@ function handleLife(cellCoord, isDying) {
 class Runner {
   constructor() {
     this.isPlaying = true;
-    this.interval = 1000;
+    this.interval = maxInterval;
   }
 
-  reset() {
-    this.isPlaying = true;
+  handleSpeed(divider) {
+    this.interval = maxInterval / divider;
   }
 
   start() {
+    this.isPlaying = true;
     setTimeout(() => {
-      if (this.isPlaying) {
-        console.log("coucou");
-        this.start();
-      }
+      trackedCells.forEach((cell) => {
+        const test = [...cell.neighbours];
+        if (cell.isAlive) {
+          if (cell.neighbours.length < 2 || cell.neighbours.length > 3) {
+            cell.willBeAlive = false;
+          } else {
+            cell.willBeAlive = true;
+          }
+        } else if (cell.neighbours.length == 3) {
+          cell.willBeAlive = true;
+        }
+      });
+      trackedCells.forEach((cell) => {
+        if (cell.isAlive != cell.willBeAlive) {
+          cell.isAlive = cell.willBeAlive;
+          handleLife(cell, !cell.isAlive);
+        }
+      });
+      this.isPlaying && this.start();
     }, this.interval);
   }
 
@@ -91,6 +118,8 @@ class Runner {
     this.isPlaying = false;
   }
 }
+
+const runner = new Runner();
 
 function popUntrackedCells() {
   trackedCells = trackedCells.filter((cell) => {
@@ -106,7 +135,6 @@ function Cell(x, y, cellSize = "20px") {
   cell.style.backgroundColor = "white";
   cell.setAttribute("x", `${x}`);
   cell.setAttribute("y", `${y}`);
-  cell.style.color = "green";
 
   cell.onclick = (cellElement) => {
     const cell = {
@@ -144,19 +172,13 @@ function Game() {
   const game = document.createElement("div");
   game.setAttribute("id", "game");
 
-  let cellSize = "20px";
-  let gridSize = 10;
-  let grid = Grid(gridSize, cellSize);
-
-  const runner = new Runner();
-
   const speedSlider = document.createElement("input");
   speedSlider.setAttribute("type", "range");
   speedSlider.setAttribute("min", "1");
   speedSlider.setAttribute("max", "100");
   speedSlider.setAttribute("value", "1");
   speedSlider.addEventListener("input", () => {
-    interval = baseInterval / this.value;
+    runner.handleSpeed(speedSlider.value);
   });
 
   const startButton = document.createElement("button");
@@ -164,7 +186,6 @@ function Game() {
   startButton.onclick = (event) => {
     if (event.target.innerText === "Play") {
       event.target.innerText = "Pause";
-      runner.reset();
       runner.start();
     } else {
       event.target.innerText = "Play";
@@ -185,6 +206,7 @@ function Game() {
       parseInt(gridSizeInput.value) < 101
     ) {
       gridContainer.removeChild(grid);
+      trackedCells = [];
       gridSize = parseInt(gridSizeInput.value);
       grid = Grid(gridSize, cellSize);
       gridContainer.appendChild(grid);
@@ -213,6 +235,7 @@ function Game() {
     ) {
       cellSize = parseInt(cellSizeInput.value) + "px";
       gridContainer.removeChild(grid);
+      trackedCells = [];
       grid = Grid(gridSize, cellSize);
       gridContainer.appendChild(grid);
       cellSizeInput.value = "";
