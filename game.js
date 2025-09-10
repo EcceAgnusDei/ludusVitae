@@ -93,15 +93,6 @@ const cellSizeContainer = document.createElement("div");
 cellSizeContainer.appendChild(cellSizeInput);
 cellSizeContainer.appendChild(cellSizeButton);
 
-function mountGrid() {
-  gridContainer.appendChild(Grid(gridSize, cellSize));
-  trackedCells.forEach((cell) => {
-    if (cell.isAlive) {
-      getCellByCoord(cell.x, cell.y).style.backgroundColor = "black";
-    }
-  });
-}
-
 function unmountGrid() {
   gridContainer.removeChild(gridContainer.firstChild);
 }
@@ -124,14 +115,16 @@ function isOnGrid(cell) {
 
 function showNeighbours() {
   trackedCells.forEach((cell) => {
-    getCellByCoord(cell.x, cell.y).style.color = "green";
-    getCellByCoord(cell.x, cell.y).innerText = `${cell.neighbours.length}`;
+    if (isOnGrid(cell)) {
+      getCellByCoord(cell.x, cell.y).style.color = "green";
+      getCellByCoord(cell.x, cell.y).innerText = `${cell?.neighbours.length}`;
+    }
   });
 }
 
-function cellIndex(cellCoord) {
+function cellIndex(x, y) {
   return trackedCells.findIndex((trackedCell) => {
-    return trackedCell.x == cellCoord.x && trackedCell.y == cellCoord.y;
+    return trackedCell.x == x && trackedCell.y == y;
   });
 }
 
@@ -161,50 +154,50 @@ function fetchLocaly() {
 }
 
 //gère le changement d'état de vie d'une cellule
-function handleLife(cellCoord, isDying) {
+function handleLife(x, y, isDying) {
   if (
     trackedCells.findIndex((trackedCell) => {
-      return cellCoord.x == trackedCell.x && cellCoord.y == trackedCell.y;
+      return x == trackedCell.x && y == trackedCell.y;
     }) == -1
   ) {
     trackedCells.push({
-      x: cellCoord.x,
-      y: cellCoord.y,
+      x,
+      y,
       neighbours: [],
       isAlive: true,
       willBeAlive: false,
     });
-    handleLife(cellCoord, false);
+    handleLife(x, y, false);
   } else {
     if (isDying) {
       trackedCells.forEach((trackedCell) => {
         const cellIndexInNbs = trackedCell.neighbours.findIndex((nb) => {
-          return cellCoord.x == nb.x && cellCoord.y == nb.y;
+          return x == nb.x && y == nb.y;
         });
         if (cellIndexInNbs != -1) {
           trackedCell.neighbours.splice(cellIndexInNbs, 1);
         }
       });
-      getCellByCoord(cellCoord.x, cellCoord.y).style.backgroundColor = "white";
+      getCellByCoord(x, y).style.backgroundColor = "white";
     } else {
-      trackedCells[cellIndex(cellCoord)].isAlive = true;
-      getCellByCoord(cellCoord.x, cellCoord.y).style.backgroundColor = "black";
-      for (let x = cellCoord.x - 1; x <= cellCoord.x + 1; x++) {
-        for (let y = cellCoord.y - 1; y <= cellCoord.y + 1; y++) {
-          if (x != cellCoord.x || (y != cellCoord.y && isOnGrid({ x, y }))) {
+      trackedCells[cellIndex(x, y)].isAlive = true;
+      getCellByCoord(x, y).style.backgroundColor = "black";
+      for (let i = x - 1; i <= x + 1; i++) {
+        for (let j = y - 1; j <= y + 1; j++) {
+          if (i != x || (j != y && isOnGrid({ i, j }))) {
             const index = trackedCells.findIndex((trackedCell) => {
-              return x == trackedCell.x && y == trackedCell.y;
+              return i == trackedCell.x && j == trackedCell.y;
             });
             if (index == -1) {
               trackedCells.push({
-                x,
-                y,
-                neighbours: [{ x: cellCoord.x, y: cellCoord.y }],
+                i,
+                j,
+                neighbours: [{ x, y }],
                 isAlive: false,
                 willBeAlive: false,
               });
             } else {
-              trackedCells[index].neighbours.push(cellCoord);
+              trackedCells[index].neighbours.push({ x, y });
             }
           }
         }
@@ -215,8 +208,13 @@ function handleLife(cellCoord, isDying) {
 
 class Runner {
   constructor() {
-    this.isPlaying = true;
+    this.isPlaying = false;
     this.interval = maxInterval;
+    this.count = 0;
+  }
+
+  isRunning() {
+    return this.isPlaying;
   }
 
   handleSpeed(divider) {
@@ -228,6 +226,7 @@ class Runner {
     this.isPlaying = true;
     setTimeout(() => {
       if (this.isPlaying) {
+        this.count++;
         trackedCells.forEach((cell) => {
           if (cell.isAlive) {
             if (cell.neighbours.length < 2 || cell.neighbours.length > 3) {
@@ -245,6 +244,7 @@ class Runner {
             handleLife(cell, !cell.isAlive);
           }
         });
+        this.count % 20 == 0 && popUntrackedCells();
         this.isPlaying && this.start();
       }
     }, this.interval);
@@ -263,60 +263,129 @@ function popUntrackedCells() {
   });
 }
 
-function Cell(x, y, cellSize = "20px") {
-  const cell = document.createElement("div");
-  cell.style.border = "1px solid black";
-  cell.style.width = cellSize;
-  cell.style.height = cellSize;
-  cell.style.backgroundColor = "white";
-  cell.setAttribute("x", `${x}`);
-  cell.setAttribute("y", `${y}`);
-  cell.style.color = "green";
-
-  cell.onclick = (cellElement) => {
-    const cell = {
-      x: parseInt(cellElement.target.getAttribute("x")),
-      y: parseInt(cellElement.target.getAttribute("y")),
-    };
-    if (isAlive(cellElement.target)) {
-      handleLife(cell, true);
-    } else {
-      handleLife(cell, false);
-    }
-  };
-
-  return cell;
-}
-
-function Grid(gridSize, cellSize) {
-  const grid = document.createElement("div");
-  grid.setAttribute("id", "grid");
-  grid.style.width = "fit-content";
-
-  for (let y = 1; y <= gridSize; y++) {
-    const line = document.createElement("div");
-    line.style.display = "flex";
-    for (let x = 1; x <= gridSize; x++) {
-      line.appendChild(Cell(x, y, cellSize));
-    }
-    grid.appendChild(line);
+class Element {
+  constructor(tag, id, parent) {
+    this.element = document.createElement(tag);
+    this.element.setAttribute("id", id);
+    this.parent = parent;
+    this.noInfinitLoop = 0;
+    this.id = id;
   }
 
-  return grid;
+  mount() {
+    this.parent.appendChild(this.element);
+  }
+
+  waitMounting(callback) {
+    if (typeof this.element === "undefined" && this.noInfinitLoop < 100) {
+      setTimeout(() => {
+        this.noInfinitLoop++;
+        this.waitMounting();
+      }, 1);
+    } else if (this.noInfinitLoop >= 100) {
+      throw new Error("Erreur dans le chargement de la page");
+    } else {
+      callback();
+    }
+  }
 }
 
+class Cell extends Element {
+  constructor(x, y, id, parent, cellSize = "20px") {
+    super(div, id, parent);
+    this.x = x;
+    this.y = y;
+    this.cellSize = cellSize;
+    this.isAlive = false;
+    this.neighbours = [];
+    this.configureCell();
+  }
+
+  configureCell() {
+    this.element.style.border = "1px solid black";
+    this.element.style.width = this.cellSize;
+    this.element.style.height = this.cellSize;
+    this.element.style.backgroundColor = "white";
+    this.element.style.color = "green"; //pour le developpement
+    this.element.onclick = () => {
+      if (this.isAlive) {
+        this.setLife(false);
+      } else {
+        this.setLife(true);
+      }
+    };
+  }
+
+  addNeighbour(x, y) {
+    this.neighbours.push(x, y);
+  }
+
+  setLife(isAlive) {
+    if (isAlive) {
+      this.isAlive = true;
+      this.element.style.backgroundColor = "black";
+    } else {
+      this.isAlive = false;
+      this.element.style.backgroundColor = "white";
+    }
+  }
+}
+
+class Line extends Element {
+  constructor(id, parent) {
+    super("div", id, parent);
+    this.configureLine();
+  }
+
+  configureLine() {
+    this.element.style.display = "flex";
+  }
+}
+
+class Grid extends Element {
+  constructor(gridSize, id, parent, trackedCells = []) {
+    super("div", id, parent);
+    this.gridSize = gridSize;
+    this.trackedCells = structuredClone(trackedCells);
+    this.configureGrid();
+  }
+
+  configureGrid() {
+    this.element.style.width = "fit-content";
+  }
+
+  createCells() {
+    for (let y = 1; y <= gridSize; y++) {
+      const line = new Line(`line${y}`, "grid");
+      for (let x = 1; x <= gridSize; x++) {
+        const cell = new Cell(x, y, `x${x}y${y}`, `line${y}`, cellSize);
+        line.waitMounting(cell.mount);
+      }
+      this.element.waitMounting(line.mount);
+    }
+  }
+}
+
+class Container extends Element {
+  constructor(id, parent) {
+    super("div", id, parent);
+  }
+}
+
+const game = new Container("game");
+
+const gridContainer = new Container("gridcontainer", game);
+
+const grid = new Grid(10, "gird", gridContainer);
 function Game() {
-  mountGrid();
   const game = document.createElement("div");
   game.setAttribute("id", "game");
-
+  const gridContainer = document.createElement("div");
+  gridContainer.setAttribute("id", "gridcontainer");
   game.appendChild(gridContainer);
-  game.appendChild(startButton);
-  game.appendChild(saveButton);
-  game.appendChild(loadButton);
-  game.appendChild(speedSlider);
-  game.appendChild(gridSizeContainer);
-  game.appendChild(cellSizeContainer);
+  document.addEventListener("DOMContentLoaded", function () {
+    const grid = new Grid(gridSize, "gridcontainer");
+  });
 
   return game;
 }
