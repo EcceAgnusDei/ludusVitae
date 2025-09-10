@@ -3,10 +3,6 @@ let cellSize = "20px";
 let gridSize = 10;
 const maxInterval = 2000;
 
-const gridContainer = document.createElement("div");
-gridContainer.setAttribute("id", "gridcontainer");
-gridContainer.style.overflow = "auto";
-
 const speedSlider = document.createElement("input");
 speedSlider.setAttribute("type", "range");
 speedSlider.setAttribute("min", "1");
@@ -291,13 +287,14 @@ class Element {
 }
 
 class Cell extends Element {
-  constructor(x, y, id, parent, cellSize = "20px") {
-    super(div, id, parent);
+  constructor(x, y, id, parent, trackedCells, cellSize = "20px") {
+    super("div", id, parent);
     this.x = x;
     this.y = y;
+    this.trackedCells = trackedCells;
     this.cellSize = cellSize;
     this.isAlive = false;
-    this.neighbours = [];
+    this.neighbours = 0;
     this.configureCell();
   }
 
@@ -313,20 +310,49 @@ class Cell extends Element {
       } else {
         this.setLife(true);
       }
+      console.log(this.trackedCells);
     };
   }
 
-  addNeighbour(x, y) {
-    this.neighbours.push(x, y);
+  addNeighbour() {
+    this.neighbours++;
+  }
+
+  dellNeighbour() {
+    this.neighbours--;
+  }
+
+  handleNeighbours(state) {
+    this.trackedCells.forEach((cell, index) => {
+      if (
+        this.x - 1 <= cell.x &&
+        this.x != cell.x &&
+        cell.x <= this.x + 1 &&
+        this.y - 1 <= cell.y &&
+        this.y != cell.y &&
+        cell.y <= this.y + 1
+      ) {
+        if (state === "dying") {
+          this.trackedCells[index].dellNeighbour();
+        } else if (state === "getting alive") {
+          this.trackedCells[index].addNeighbour();
+        }
+      }
+    });
   }
 
   setLife(isAlive) {
     if (isAlive) {
       this.isAlive = true;
       this.element.style.backgroundColor = "black";
+      this.handleNeighbours("getting alive");
+      if (!this.trackedCells.includes(this)) {
+        this.trackedCells.push(this);
+      }
     } else {
       this.isAlive = false;
       this.element.style.backgroundColor = "white";
+      this.handleNeighbours("dying");
     }
   }
 }
@@ -356,12 +382,19 @@ class Grid extends Element {
 
   createCells() {
     for (let y = 1; y <= gridSize; y++) {
-      const line = new Line(`line${y}`, "grid");
+      const line = new Line(`line${y}`, this.element);
       for (let x = 1; x <= gridSize; x++) {
-        const cell = new Cell(x, y, `x${x}y${y}`, `line${y}`, cellSize);
-        line.waitMounting(cell.mount);
+        const cell = new Cell(
+          x,
+          y,
+          `x${x}y${y}`,
+          line.element,
+          trackedCells,
+          cellSize
+        );
+        line.waitMounting(cell.mount.bind(cell));
       }
-      this.element.waitMounting(line.mount);
+      this.waitMounting(line.mount.bind(line));
     }
   }
 }
@@ -372,22 +405,4 @@ class Container extends Element {
   }
 }
 
-const game = new Container("game");
-
-const gridContainer = new Container("gridcontainer", game);
-
-const grid = new Grid(10, "gird", gridContainer);
-function Game() {
-  const game = document.createElement("div");
-  game.setAttribute("id", "game");
-  const gridContainer = document.createElement("div");
-  gridContainer.setAttribute("id", "gridcontainer");
-  game.appendChild(gridContainer);
-  document.addEventListener("DOMContentLoaded", function () {
-    const grid = new Grid(gridSize, "gridcontainer");
-  });
-
-  return game;
-}
-
-export default Game();
+export { Container, Grid };
