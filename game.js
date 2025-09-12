@@ -3,27 +3,6 @@ let cellSize = "20px";
 let gridSize = 10;
 const maxInterval = 2000;
 
-const speedSlider = document.createElement("input");
-speedSlider.setAttribute("type", "range");
-speedSlider.setAttribute("min", "1");
-speedSlider.setAttribute("max", "100");
-speedSlider.setAttribute("value", "1");
-speedSlider.addEventListener("input", () => {
-  runner.handleSpeed(speedSlider.value);
-});
-
-const startButton = document.createElement("button");
-startButton.innerText = "Play";
-startButton.onclick = (event) => {
-  if (event.target.innerText === "Play") {
-    event.target.innerText = "Pause";
-    runner.start();
-  } else {
-    event.target.innerText = "Play";
-    runner.stop();
-  }
-};
-
 const saveButton = document.createElement("button");
 saveButton.innerText = "Sauvegarder";
 saveButton.onclick = () => {
@@ -214,7 +193,6 @@ class Cell extends Element {
   }
 
   dellNeighbour() {
-    //console.log(this.x, this.y, "has a nb dying (in dellnb)");
     this.neighbours--;
   }
 
@@ -233,11 +211,6 @@ class Cell extends Element {
   }
 
   handleNeighbours(isBroughtToLife) {
-    console.log(
-      this.x,
-      this.y,
-      `${isBroughtToLife ? "getting alive" : "dying"}`
-    );
     for (let i = this.x - 1; i <= this.x + 1; i++) {
       for (let j = this.y - 1; j <= this.y + 1; j++) {
         if ((i != this.x || j != this.y) && this.isOnGrid(i, j)) {
@@ -287,11 +260,17 @@ class Grid extends Element {
     this.gridSize = gridSize;
     this.trackedCells = structuredClone(trackedCells);
     this.cells = [];
+    this.playing = false;
+    this.baseInterval = 2000;
+    this.devider = 1;
     this.configureGrid();
   }
 
+  hundleSpeed(devider) {
+    this.devider = devider;
+  }
+
   nextState() {
-    console.log("next");
     this.trackedCells.forEach((cell) => {
       cell.willItBeAlive();
     });
@@ -301,6 +280,20 @@ class Grid extends Element {
         cell.handleNeighbours(cell.willBeAlive);
       }
     });
+  }
+
+  play() {
+    this.isPlaying = true;
+    setTimeout(() => {
+      if (this.isPlaying) {
+        this.nextState();
+        this.play();
+      }
+    }, this.baseInterval / this.devider);
+  }
+
+  pause() {
+    this.isPlaying = false;
   }
 
   configureGrid() {
