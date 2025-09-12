@@ -89,35 +89,6 @@ const cellSizeContainer = document.createElement("div");
 cellSizeContainer.appendChild(cellSizeInput);
 cellSizeContainer.appendChild(cellSizeButton);
 
-function unmountGrid() {
-  gridContainer.removeChild(gridContainer.firstChild);
-}
-
-function isAlive(cell) {
-  return cell.style.backgroundColor === "black";
-}
-
-function getCellByCoord(x, y) {
-  return document.querySelector(`[x="${x}"][y="${y}"]`);
-}
-
-function isOnGrid(cell) {
-  if (cell.x > 0 && cell.x <= gridSize && cell.y > 0 && cell.y <= gridSize) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-function showNeighbours() {
-  trackedCells.forEach((cell) => {
-    if (isOnGrid(cell)) {
-      getCellByCoord(cell.x, cell.y).style.color = "green";
-      getCellByCoord(cell.x, cell.y).innerText = `${cell?.neighbours.length}`;
-    }
-  });
-}
-
 function cellIndex(x, y) {
   return trackedCells.findIndex((trackedCell) => {
     return trackedCell.x == x && trackedCell.y == y;
@@ -148,110 +119,6 @@ function fetchLocaly() {
     alert("Impossible de charger la grille");
   }
 }
-
-//gère le changement d'état de vie d'une cellule
-function handleLife(x, y, isDying) {
-  if (
-    trackedCells.findIndex((trackedCell) => {
-      return x == trackedCell.x && y == trackedCell.y;
-    }) == -1
-  ) {
-    trackedCells.push({
-      x,
-      y,
-      neighbours: [],
-      isAlive: true,
-      willBeAlive: false,
-    });
-    handleLife(x, y, false);
-  } else {
-    if (isDying) {
-      trackedCells.forEach((trackedCell) => {
-        const cellIndexInNbs = trackedCell.neighbours.findIndex((nb) => {
-          return x == nb.x && y == nb.y;
-        });
-        if (cellIndexInNbs != -1) {
-          trackedCell.neighbours.splice(cellIndexInNbs, 1);
-        }
-      });
-      getCellByCoord(x, y).style.backgroundColor = "white";
-    } else {
-      trackedCells[cellIndex(x, y)].isAlive = true;
-      getCellByCoord(x, y).style.backgroundColor = "black";
-      for (let i = x - 1; i <= x + 1; i++) {
-        for (let j = y - 1; j <= y + 1; j++) {
-          if (i != x || (j != y && isOnGrid({ i, j }))) {
-            const index = trackedCells.findIndex((trackedCell) => {
-              return i == trackedCell.x && j == trackedCell.y;
-            });
-            if (index == -1) {
-              trackedCells.push({
-                i,
-                j,
-                neighbours: [{ x, y }],
-                isAlive: false,
-                willBeAlive: false,
-              });
-            } else {
-              trackedCells[index].neighbours.push({ x, y });
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-class Runner {
-  constructor() {
-    this.isPlaying = false;
-    this.interval = maxInterval;
-    this.count = 0;
-  }
-
-  isRunning() {
-    return this.isPlaying;
-  }
-
-  handleSpeed(divider) {
-    this.interval = maxInterval / divider;
-  }
-
-  start() {
-    showNeighbours();
-    this.isPlaying = true;
-    setTimeout(() => {
-      if (this.isPlaying) {
-        this.count++;
-        trackedCells.forEach((cell) => {
-          if (cell.isAlive) {
-            if (cell.neighbours.length < 2 || cell.neighbours.length > 3) {
-              cell.willBeAlive = false;
-            } else {
-              cell.willBeAlive = true;
-            }
-          } else if (cell.neighbours.length == 3) {
-            cell.willBeAlive = true;
-          }
-        });
-        trackedCells.forEach((cell) => {
-          if (cell.isAlive != cell.willBeAlive) {
-            cell.isAlive = cell.willBeAlive;
-            handleLife(cell, !cell.isAlive);
-          }
-        });
-        this.count % 20 == 0 && popUntrackedCells();
-        this.isPlaying && this.start();
-      }
-    }, this.interval);
-  }
-
-  stop() {
-    this.isPlaying = false;
-  }
-}
-
-const runner = new Runner();
 
 function popUntrackedCells() {
   trackedCells = trackedCells.filter((cell) => {
@@ -287,15 +154,39 @@ class Element {
 }
 
 class Cell extends Element {
-  constructor(x, y, id, parent, trackedCells, cellSize = "20px") {
+  constructor(
+    x,
+    y,
+    id,
+    parent,
+    { trackedCells, gridSize, cells },
+    cellSize = "20px"
+  ) {
     super("div", id, parent);
     this.x = x;
     this.y = y;
+    this.cells = cells;
+    this.gridSize = gridSize;
     this.trackedCells = trackedCells;
     this.cellSize = cellSize;
     this.isAlive = false;
+    this.willBeAlive = false;
     this.neighbours = 0;
     this.configureCell();
+  }
+
+  willItBeAlive() {
+    if (this.isAlive) {
+      if (this.neighbours == 2 || this.neighbours == 3) {
+        this.willBeAlive = true;
+      } else {
+        this.willBeAlive = false;
+      }
+    } else if (this.neighbours == 3) {
+      this.willBeAlive = true;
+    } else {
+      this.willBeAlive = false;
+    }
   }
 
   configureCell() {
@@ -307,37 +198,61 @@ class Cell extends Element {
     this.element.onclick = () => {
       if (this.isAlive) {
         this.setLife(false);
+        this.handleNeighbours(false);
       } else {
         this.setLife(true);
+        this.handleNeighbours(true);
       }
-      console.log(this.trackedCells);
     };
   }
 
   addNeighbour() {
+    if (!this.trackedCells.includes(this)) {
+      this.trackedCells.push(this);
+    }
     this.neighbours++;
   }
 
   dellNeighbour() {
+    //console.log(this.x, this.y, "has a nb dying (in dellnb)");
     this.neighbours--;
   }
 
-  handleNeighbours(state) {
-    this.trackedCells.forEach((cell, index) => {
-      if (
-        this.x - 1 <= cell.x &&
-        this.x != cell.x &&
-        cell.x <= this.x + 1 &&
-        this.y - 1 <= cell.y &&
-        this.y != cell.y &&
-        cell.y <= this.y + 1
-      ) {
-        if (state === "dying") {
-          this.trackedCells[index].dellNeighbour();
-        } else if (state === "getting alive") {
-          this.trackedCells[index].addNeighbour();
+  selectCellByCoord(x, y) {
+    return this.cells.find((cell) => {
+      return cell.x == x && cell.y == y;
+    });
+  }
+
+  isOnGrid(x, y) {
+    if (x <= 0 || x > this.gridSize || y <= 0 || y > this.gridSize) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  handleNeighbours(isBroughtToLife) {
+    console.log(
+      this.x,
+      this.y,
+      `${isBroughtToLife ? "getting alive" : "dying"}`
+    );
+    for (let i = this.x - 1; i <= this.x + 1; i++) {
+      for (let j = this.y - 1; j <= this.y + 1; j++) {
+        if ((i != this.x || j != this.y) && this.isOnGrid(i, j)) {
+          const neighbour = this.selectCellByCoord(i, j);
+          if (isBroughtToLife) {
+            neighbour.addNeighbour();
+          } else {
+            neighbour.dellNeighbour();
+          }
         }
       }
+    }
+
+    this.cells.forEach((cell) => {
+      cell.element.innerText = `${cell.neighbours}`;
     });
   }
 
@@ -345,14 +260,12 @@ class Cell extends Element {
     if (isAlive) {
       this.isAlive = true;
       this.element.style.backgroundColor = "black";
-      this.handleNeighbours("getting alive");
       if (!this.trackedCells.includes(this)) {
         this.trackedCells.push(this);
       }
     } else {
       this.isAlive = false;
       this.element.style.backgroundColor = "white";
-      this.handleNeighbours("dying");
     }
   }
 }
@@ -373,7 +286,21 @@ class Grid extends Element {
     super("div", id, parent);
     this.gridSize = gridSize;
     this.trackedCells = structuredClone(trackedCells);
+    this.cells = [];
     this.configureGrid();
+  }
+
+  nextState() {
+    console.log("next");
+    this.trackedCells.forEach((cell) => {
+      cell.willItBeAlive();
+    });
+    this.trackedCells.forEach((cell) => {
+      if (cell.isAlive != cell.willBeAlive) {
+        cell.setLife(cell.willBeAlive);
+        cell.handleNeighbours(cell.willBeAlive);
+      }
+    });
   }
 
   configureGrid() {
@@ -384,14 +311,8 @@ class Grid extends Element {
     for (let y = 1; y <= gridSize; y++) {
       const line = new Line(`line${y}`, this.element);
       for (let x = 1; x <= gridSize; x++) {
-        const cell = new Cell(
-          x,
-          y,
-          `x${x}y${y}`,
-          line.element,
-          trackedCells,
-          cellSize
-        );
+        const cell = new Cell(x, y, `x${x}y${y}`, line.element, this, cellSize);
+        this.cells.push(cell);
         line.waitMounting(cell.mount.bind(cell));
       }
       this.waitMounting(line.mount.bind(line));

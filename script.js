@@ -11,4 +11,12 @@ document.addEventListener("DOMContentLoaded", function () {
   game.waitMounting(gridContainer.mount.bind(gridContainer));
   gridContainer.waitMounting(grid.mount.bind(grid));
   grid.waitMounting(grid.createCells.bind(grid));
+
+  const startButton = document.createElement("button");
+  startButton.innerText = "Play";
+  startButton.onclick = () => {
+    grid.nextState();
+    console.log(grid.trackedCells);
+  };
+  document.body.appendChild(startButton);
 });
