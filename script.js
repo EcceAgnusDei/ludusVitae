@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const gridContainer = new Container("gridcontainer", game.element);
 
-  const grid = new Grid(10, "gird", gridContainer.element);
+  const grid = new Grid("gird", gridContainer.element);
 
   game.mount();
   game.waitMounting(gridContainer.mount.bind(gridContainer));
@@ -36,4 +36,34 @@ document.addEventListener("DOMContentLoaded", function () {
     grid.hundleSpeed(speedSlider.value);
   });
   document.body.appendChild(speedSlider);
+
+  const gridSizeInput = document.createElement("input");
+  gridSizeInput.setAttribute("type", "input");
+  gridSizeInput.setAttribute("name", "gridsize");
+  gridSizeInput.setAttribute("placeholder", "Taille de la grille");
+  const gridSizeButton = document.createElement("button");
+  gridSizeButton.innerText = "Ok";
+  gridSizeButton.onclick = () => {
+    if (
+      parseInt(gridSizeInput.value) > 0 &&
+      parseInt(gridSizeInput.value) < 101
+    ) {
+      grid.createCells(parseInt(gridSizeInput.value));
+      gridSizeInput.value = "";
+    } else {
+      gridSizeInput.value = "";
+      alert("Veuillez entrer une valeur valide.");
+    }
+  };
+  const gridSizeContainer = document.createElement("div");
+  gridSizeContainer.appendChild(gridSizeInput);
+  gridSizeContainer.appendChild(gridSizeButton);
+  document.body.appendChild(gridSizeContainer);
+
+  const saveButton = document.createElement("button");
+  saveButton.innerText = "Sauvegarder";
+  saveButton.onclick = () => {
+    grid.saveLocaly();
+  };
+  document.body.appendChild(saveButton);
 });

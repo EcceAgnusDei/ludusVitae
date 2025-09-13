@@ -3,12 +3,6 @@ let cellSize = "20px";
 let gridSize = 10;
 const maxInterval = 2000;
 
-const saveButton = document.createElement("button");
-saveButton.innerText = "Sauvegarder";
-saveButton.onclick = () => {
-  saveLocaly();
-};
-
 const loadButton = document.createElement("button");
 loadButton.innerText = "Charger";
 loadButton.onclick = () => {
@@ -16,33 +10,6 @@ loadButton.onclick = () => {
   unmountGrid();
   mountGrid();
 };
-
-const gridSizeInput = document.createElement("input");
-gridSizeInput.setAttribute("type", "input");
-gridSizeInput.setAttribute("name", "gridsize");
-gridSizeInput.setAttribute("placeholder", "Taille de la grille");
-
-const gridSizeButton = document.createElement("button");
-gridSizeButton.innerText = "Ok";
-gridSizeButton.onclick = () => {
-  if (
-    parseInt(gridSizeInput.value) > 0 &&
-    parseInt(gridSizeInput.value) < 101
-  ) {
-    trackedCells = [];
-    gridSize = parseInt(gridSizeInput.value);
-    unmountGrid();
-    mountGrid();
-    gridSizeInput.value = "";
-  } else {
-    gridSizeInput.value = "";
-    alert("Veuillez entrer une valeur valide.");
-  }
-};
-
-const gridSizeContainer = document.createElement("div");
-gridSizeContainer.appendChild(gridSizeInput);
-gridSizeContainer.appendChild(gridSizeButton);
 
 const cellSizeInput = document.createElement("input");
 cellSizeInput.setAttribute("type", "input");
@@ -67,21 +34,6 @@ cellSizeButton.onclick = () => {
 const cellSizeContainer = document.createElement("div");
 cellSizeContainer.appendChild(cellSizeInput);
 cellSizeContainer.appendChild(cellSizeButton);
-
-function cellIndex(x, y) {
-  return trackedCells.findIndex((trackedCell) => {
-    return trackedCell.x == x && trackedCell.y == y;
-  });
-}
-
-function saveLocaly() {
-  try {
-    localStorage.setItem("grid", JSON.stringify(trackedCells));
-    alert("Grille enregistrée");
-  } catch {
-    alert("Impossible d'enregistrer");
-  }
-}
 
 function fetchLocaly() {
   try {
@@ -112,6 +64,10 @@ class Element {
     this.parent = parent;
     this.noInfinitLoop = 0;
     this.id = id;
+  }
+
+  remove() {
+    this.element.remove();
   }
 
   mount() {
@@ -255,19 +211,36 @@ class Line extends Element {
 }
 
 class Grid extends Element {
-  constructor(gridSize, id, parent, trackedCells = []) {
+  constructor(id, parent, trackedCells = []) {
     super("div", id, parent);
-    this.gridSize = gridSize;
     this.trackedCells = structuredClone(trackedCells);
     this.cells = [];
-    this.playing = false;
     this.baseInterval = 2000;
+    this.isPlaying = false;
+    this.timerId = null;
     this.devider = 1;
     this.configureGrid();
   }
 
+  saveLocaly() {
+    const toStringify = [];
+    this.trackedCells.forEach(({ x, y, neighbours, isAlive }) => {
+      toStringify.push({ x, y, neighbours, isAlive });
+    });
+    try {
+      localStorage.setItem("grid", JSON.stringify(toStringify));
+      alert("Grille enregistrée");
+    } catch {
+      alert("Impossible d'enregistrer");
+    }
+  }
+
   hundleSpeed(devider) {
     this.devider = devider;
+    if (this.isPlaying) {
+      this.pause();
+      this.play();
+    }
   }
 
   nextState() {
@@ -284,23 +257,23 @@ class Grid extends Element {
 
   play() {
     this.isPlaying = true;
-    setTimeout(() => {
-      if (this.isPlaying) {
-        this.nextState();
-        this.play();
-      }
+    this.timerId = setTimeout(() => {
+      this.nextState();
+      this.play();
     }, this.baseInterval / this.devider);
   }
 
   pause() {
     this.isPlaying = false;
+    clearTimeout(this.timerId);
   }
 
   configureGrid() {
     this.element.style.width = "fit-content";
   }
 
-  createCells() {
+  createCells(gridSize = 10, cellSize = "20px") {
+    this.element.innerHTML = ""; //réinitialisation
     for (let y = 1; y <= gridSize; y++) {
       const line = new Line(`line${y}`, this.element);
       for (let x = 1; x <= gridSize; x++) {
