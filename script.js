@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
       parseInt(gridSizeInput.value) > 0 &&
       parseInt(gridSizeInput.value) < 101
     ) {
-      grid.createCells(parseInt(gridSizeInput.value));
+      grid.resize(parseInt(gridSizeInput.value));
       gridSizeInput.value = "";
     } else {
       gridSizeInput.value = "";
@@ -66,4 +66,11 @@ document.addEventListener("DOMContentLoaded", function () {
     grid.saveLocaly();
   };
   document.body.appendChild(saveButton);
+
+  const loadButton = document.createElement("button");
+  loadButton.innerText = "Charger";
+  loadButton.onclick = () => {
+    grid.fetchLocaly();
+  };
+  document.body.appendChild(loadButton);
 });

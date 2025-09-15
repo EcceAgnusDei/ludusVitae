@@ -3,14 +3,6 @@ let cellSize = "20px";
 let gridSize = 10;
 const maxInterval = 2000;
 
-const loadButton = document.createElement("button");
-loadButton.innerText = "Charger";
-loadButton.onclick = () => {
-  fetchLocaly();
-  unmountGrid();
-  mountGrid();
-};
-
 const cellSizeInput = document.createElement("input");
 cellSizeInput.setAttribute("type", "input");
 cellSizeInput.setAttribute("name", "cellSize");
@@ -94,7 +86,7 @@ class Cell extends Element {
     y,
     id,
     parent,
-    { trackedCells, gridSize, cells },
+    { trackedCells, gridSize, cells, trackedCellsData, waitMounting },
     cellSize = "20px"
   ) {
     super("div", id, parent);
@@ -103,6 +95,7 @@ class Cell extends Element {
     this.cells = cells;
     this.gridSize = gridSize;
     this.trackedCells = trackedCells;
+    this.trackedCellsData = trackedCellsData;
     this.cellSize = cellSize;
     this.isAlive = false;
     this.willBeAlive = false;
@@ -146,16 +139,19 @@ class Cell extends Element {
       this.trackedCells.push(this);
     }
     this.neighbours++;
+    this.element.innerText = `${this.neighbours}`;
   }
 
   dellNeighbour() {
     this.neighbours--;
+    this.element.innerText = `${this.neighbours}`;
   }
 
   selectCellByCoord(x, y) {
-    return this.cells.find((cell) => {
+    const selectedCell = this.cells.find((cell) => {
       return cell.x == x && cell.y == y;
     });
+    return selectedCell;
   }
 
   isOnGrid(x, y) {
@@ -179,10 +175,6 @@ class Cell extends Element {
         }
       }
     }
-
-    this.cells.forEach((cell) => {
-      cell.element.innerText = `${cell.neighbours}`;
-    });
   }
 
   setLife(isAlive) {
@@ -211,27 +203,62 @@ class Line extends Element {
 }
 
 class Grid extends Element {
-  constructor(id, parent, trackedCells = []) {
+  constructor(id, parent) {
     super("div", id, parent);
-    this.trackedCells = structuredClone(trackedCells);
+    this.trackedCells = [];
+    this.trackedCellsData = [];
     this.cells = [];
     this.baseInterval = 2000;
+    this.gridSize = 10;
+    this.cellSize = "20px";
     this.isPlaying = false;
     this.timerId = null;
     this.devider = 1;
     this.configureGrid();
   }
 
+  resize(gridSize) {
+    this.gridSize = gridSize;
+    this.createCells();
+  }
+
   saveLocaly() {
     const toStringify = [];
-    this.trackedCells.forEach(({ x, y, neighbours, isAlive }) => {
-      toStringify.push({ x, y, neighbours, isAlive });
+    this.trackedCells.forEach(({ x, y, isAlive }) => {
+      if (isAlive) {
+        toStringify.push({ x, y });
+      }
     });
     try {
       localStorage.setItem("grid", JSON.stringify(toStringify));
       alert("Grille enregistrée");
     } catch {
       alert("Impossible d'enregistrer");
+    }
+  }
+
+  fetchLocaly() {
+    try {
+      this.cells = [];
+      this.trackedCells = [];
+
+      this.trackedCellsData = JSON.parse(localStorage.getItem("grid"));
+      const maxX = this.trackedCellsData.reduce((max, obj) =>
+        obj["x"] > max["x"] ? obj : max
+      );
+      const maxY = this.trackedCellsData.reduce((max, obj) =>
+        obj["y"] > max["y"] ? obj : max
+      );
+      const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
+      this.resize(gridSize);
+
+      this.trackedCellsData.forEach(({ x, y }) => {
+        document.getElementById(`x${x}y${y}`).click();
+      });
+
+      alert("Grille chargée");
+    } catch {
+      alert("Impossible de charger la grille");
     }
   }
 
@@ -272,12 +299,19 @@ class Grid extends Element {
     this.element.style.width = "fit-content";
   }
 
-  createCells(gridSize = 10, cellSize = "20px") {
+  createCells() {
     this.element.innerHTML = ""; //réinitialisation
-    for (let y = 1; y <= gridSize; y++) {
+    for (let y = 1; y <= this.gridSize; y++) {
       const line = new Line(`line${y}`, this.element);
-      for (let x = 1; x <= gridSize; x++) {
-        const cell = new Cell(x, y, `x${x}y${y}`, line.element, this, cellSize);
+      for (let x = 1; x <= this.gridSize; x++) {
+        const cell = new Cell(
+          x,
+          y,
+          `x${x}y${y}`,
+          line.element,
+          this,
+          this.cellSize
+        );
         this.cells.push(cell);
         line.waitMounting(cell.mount.bind(cell));
       }
