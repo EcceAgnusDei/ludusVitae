@@ -1,48 +1,3 @@
-let trackedCells = [];
-let cellSize = "20px";
-let gridSize = 10;
-const maxInterval = 2000;
-
-const cellSizeInput = document.createElement("input");
-cellSizeInput.setAttribute("type", "input");
-cellSizeInput.setAttribute("name", "cellSize");
-cellSizeInput.setAttribute("placeholder", "Taille d'une cellule");
-
-const cellSizeButton = document.createElement("button");
-cellSizeButton.innerText = "Ok";
-cellSizeButton.onclick = () => {
-  if (parseInt(cellSizeInput.value) > 1 && parseInt(cellSizeInput.value) < 71) {
-    cellSize = parseInt(cellSizeInput.value) + "px";
-    trackedCells = [];
-    unmountGrid();
-    mountGrid();
-    cellSizeInput.value = "";
-  } else {
-    cellSizeInput.value = "";
-    alert("Veuillez entrer une valeur valide.");
-  }
-};
-
-const cellSizeContainer = document.createElement("div");
-cellSizeContainer.appendChild(cellSizeInput);
-cellSizeContainer.appendChild(cellSizeButton);
-
-function fetchLocaly() {
-  try {
-    trackedCells = structuredClone(JSON.parse(localStorage.getItem("grid")));
-    alert("Grille chargée");
-    const maxX = trackedCells.reduce((max, obj) =>
-      obj["x"] > max["x"] ? obj : max
-    );
-    const maxY = trackedCells.reduce((max, obj) =>
-      obj["y"] > max["y"] ? obj : max
-    );
-    gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-  } catch {
-    alert("Impossible de charger la grille");
-  }
-}
-
 function popUntrackedCells() {
   trackedCells = trackedCells.filter((cell) => {
     return cell.neighbours != 0 || cell.isAlive;
@@ -56,10 +11,6 @@ class Element {
     this.parent = parent;
     this.noInfinitLoop = 0;
     this.id = id;
-  }
-
-  remove() {
-    this.element.remove();
   }
 
   mount() {
@@ -86,7 +37,7 @@ class Cell extends Element {
     y,
     id,
     parent,
-    { trackedCells, gridSize, cells, trackedCellsData, waitMounting },
+    { trackedCells, gridSize, cells, isOnGrid },
     cellSize = "20px"
   ) {
     super("div", id, parent);
@@ -95,7 +46,7 @@ class Cell extends Element {
     this.cells = cells;
     this.gridSize = gridSize;
     this.trackedCells = trackedCells;
-    this.trackedCellsData = trackedCellsData;
+    this.isOnGrid = isOnGrid;
     this.cellSize = cellSize;
     this.isAlive = false;
     this.willBeAlive = false;
@@ -154,14 +105,6 @@ class Cell extends Element {
     return selectedCell;
   }
 
-  isOnGrid(x, y) {
-    if (x <= 0 || x > this.gridSize || y <= 0 || y > this.gridSize) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-
   handleNeighbours(isBroughtToLife) {
     for (let i = this.x - 1; i <= this.x + 1; i++) {
       for (let j = this.y - 1; j <= this.y + 1; j++) {
@@ -206,7 +149,6 @@ class Grid extends Element {
   constructor(id, parent) {
     super("div", id, parent);
     this.trackedCells = [];
-    this.trackedCellsData = [];
     this.cells = [];
     this.baseInterval = 2000;
     this.gridSize = 10;
@@ -217,9 +159,28 @@ class Grid extends Element {
     this.configureGrid();
   }
 
-  resize(gridSize) {
-    this.gridSize = gridSize;
+  resize(value, cellsToClickCoords = []) {
+    if (typeof value == "string") {
+      this.cellSize = value;
+    } else {
+      this.gridSize = value;
+    }
     this.createCells();
+    this.clickCells(cellsToClickCoords);
+  }
+
+  getAliveCellsCoords() {
+    return this.trackedCells.filter((cell) => {
+      return cell.isAlive;
+    });
+  }
+
+  isOnGrid(x, y) {
+    if (x <= 0 || x > this.gridSize || y <= 0 || y > this.gridSize) {
+      return false;
+    } else {
+      return true;
+    }
   }
 
   saveLocaly() {
@@ -237,24 +198,23 @@ class Grid extends Element {
     }
   }
 
+  clickCells(cellsToClick) {
+    cellsToClick.forEach(({ x, y }) => {
+      if (this.isOnGrid(x, y)) document.getElementById(`x${x}y${y}`).click();
+    });
+  }
+
   fetchLocaly() {
     try {
-      this.cells = [];
-      this.trackedCells = [];
-
-      this.trackedCellsData = JSON.parse(localStorage.getItem("grid"));
-      const maxX = this.trackedCellsData.reduce((max, obj) =>
+      const trackedCellsData = JSON.parse(localStorage.getItem("grid"));
+      const maxX = trackedCellsData.reduce((max, obj) =>
         obj["x"] > max["x"] ? obj : max
       );
-      const maxY = this.trackedCellsData.reduce((max, obj) =>
+      const maxY = trackedCellsData.reduce((max, obj) =>
         obj["y"] > max["y"] ? obj : max
       );
       const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-      this.resize(gridSize);
-
-      this.trackedCellsData.forEach(({ x, y }) => {
-        document.getElementById(`x${x}y${y}`).click();
-      });
+      this.resize(gridSize, trackedCellsData);
 
       alert("Grille chargée");
     } catch {
@@ -262,7 +222,7 @@ class Grid extends Element {
     }
   }
 
-  hundleSpeed(devider) {
+  handleSpeed(devider) {
     this.devider = devider;
     if (this.isPlaying) {
       this.pause();
@@ -301,6 +261,9 @@ class Grid extends Element {
 
   createCells() {
     this.element.innerHTML = ""; //réinitialisation
+    this.cells = [];
+    this.trackedCells = [];
+
     for (let y = 1; y <= this.gridSize; y++) {
       const line = new Line(`line${y}`, this.element);
       for (let x = 1; x <= this.gridSize; x++) {
