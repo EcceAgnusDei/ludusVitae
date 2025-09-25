@@ -173,9 +173,13 @@ class Grid extends Element {
   }
 
   getAliveCellsCoords() {
-    return this.trackedCells.filter((cell) => {
-      return cell.isAlive;
+    const aliveCellsCoords = [];
+    this.trackedCells.forEach(({ x, y, isAlive }) => {
+      if (isAlive) {
+        aliveCellsCoords.push({ x, y });
+      }
     });
+    return aliveCellsCoords;
   }
 
   isOnGrid(x, y) {
@@ -187,14 +191,8 @@ class Grid extends Element {
   }
 
   saveLocaly() {
-    const toStringify = [];
-    this.trackedCells.forEach(({ x, y, isAlive }) => {
-      if (isAlive) {
-        toStringify.push({ x, y });
-      }
-    });
     try {
-      localStorage.setItem("grid", JSON.stringify(toStringify));
+      localStorage.setItem("grid", JSON.stringify(this.getAliveCellsCoords()));
       alert("Grille enregistrée");
     } catch {
       alert("Impossible d'enregistrer");
@@ -203,24 +201,22 @@ class Grid extends Element {
 
   async saveInDb() {
     try {
-      const response = await fetch(`https://api.exemple.com/data/`, {
+      const response = await fetch(`http://localhost:3000`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ data: this.getAliveCellsCoords() }),
       });
-
       if (!response.ok) {
-        throw new Error(`Erreur HTTP : ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
       }
 
       const result = await response.json();
-      console.log("Données mises à jour avec succès :", result);
-      return result;
+      console.log("Données sauvegardées avec succés : ", result.data);
     } catch (error) {
       console.error("Erreur lors de la mise à jour :", error);
-      throw error;
     }
   }
 
@@ -233,15 +229,16 @@ class Grid extends Element {
   fetchLocaly() {
     try {
       const trackedCellsData = JSON.parse(localStorage.getItem("grid"));
-      const maxX = trackedCellsData.reduce((max, obj) =>
-        obj["x"] > max["x"] ? obj : max
-      );
-      const maxY = trackedCellsData.reduce((max, obj) =>
-        obj["y"] > max["y"] ? obj : max
-      );
-      const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-      this.resize(gridSize, trackedCellsData);
-
+      if (trackedCellsData.length > 0) {
+        const maxX = trackedCellsData.reduce((max, obj) =>
+          obj["x"] > max["x"] ? obj : max
+        );
+        const maxY = trackedCellsData.reduce((max, obj) =>
+          obj["y"] > max["y"] ? obj : max
+        );
+        const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
+        this.resize(gridSize, trackedCellsData);
+      }
       alert("Grille chargée");
     } catch {
       alert("Impossible de charger la grille");
