@@ -190,6 +190,12 @@ class Grid extends Element {
     }
   }
 
+  clickCells(cellsToClick) {
+    cellsToClick.forEach(({ x, y }) => {
+      if (this.isOnGrid(x, y)) document.getElementById(`x${x}y${y}`).click();
+    });
+  }
+
   saveLocaly() {
     try {
       localStorage.setItem("grid", JSON.stringify(this.getAliveCellsCoords()));
@@ -220,28 +226,41 @@ class Grid extends Element {
     }
   }
 
-  clickCells(cellsToClick) {
-    cellsToClick.forEach(({ x, y }) => {
-      if (this.isOnGrid(x, y)) document.getElementById(`x${x}y${y}`).click();
-    });
-  }
-
-  fetchLocaly() {
+  async fetch(gridId) {
     try {
-      const trackedCellsData = JSON.parse(localStorage.getItem("grid"));
-      if (trackedCellsData.length > 0) {
-        const maxX = trackedCellsData.reduce((max, obj) =>
+      let aliveCellsCoords = [];
+      if (typeof gridId === "undefined") {
+        aliveCellsCoords = JSON.parse(localStorage.getItem("grid"));
+      } else {
+        const response = await fetch(`http://localhost:3000/grids/${gridId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            `Erreur HTTP : ${errorData.error || response.status}`
+          );
+        }
+        const result = await response.json();
+        aliveCellsCoords = JSON.parse(result.data);
+        console.log("Données chargées avec succés : ", result.data);
+      }
+      if (aliveCellsCoords.length > 0) {
+        const maxX = aliveCellsCoords.reduce((max, obj) =>
           obj["x"] > max["x"] ? obj : max
         );
-        const maxY = trackedCellsData.reduce((max, obj) =>
+        const maxY = aliveCellsCoords.reduce((max, obj) =>
           obj["y"] > max["y"] ? obj : max
         );
         const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-        this.resize(gridSize, trackedCellsData);
+        this.resize(gridSize, aliveCellsCoords);
       }
-      alert("Grille chargée");
-    } catch {
-      alert("Impossible de charger la grille");
+      console.log("Grille chargée");
+    } catch (error) {
+      console.log("Impossible de charger la grille :", error.message);
     }
   }
 

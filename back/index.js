@@ -8,8 +8,6 @@ const user = process.env.USER;
 const password = process.env.PASSWORD;
 const database = process.env.DATABASE;
 
-console.log("user", user, password);
-
 const dbConfig = {
   host,
   user,
@@ -64,24 +62,51 @@ async function insertData(data) {
   }
 }
 
+async function getGrid(gridId) {
+  let connection;
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    console.log("Connexion à la base de données réussie");
+
+    const query = "SELECT alive_cells FROM grids WHERE id = ?";
+    const values = [gridId];
+
+    const [result] = await connection.execute(query, values);
+    console.log("Données sélectionnées avec succès:", result);
+    return result;
+  } catch (error) {
+    console.error("Erreur lors de la sélection :", error.message);
+    throw error;
+  } finally {
+    if (connection) {
+      try {
+        await connection.end();
+        console.log("Connexion à la base de données fermée");
+      } catch (error) {
+        console.error(
+          "Erreur lors de la fermeture de la connexion :",
+          error.message
+        );
+      }
+    }
+  }
+}
+
 // Créer un serveur HTTP
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // Répondre à la requête
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  //Gestion de la requète options
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const id = url.pathname.split("/")[2];
 
   if (req.method === "OPTIONS") {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Le serveur accèpte la requête");
     return;
-  }
-
-  //Gestion de la réception du body
-
-  if (req.method === "POST") {
+  } else if (req.method === "POST") {
     let body = "";
 
     // Écouter les données du body
@@ -106,6 +131,16 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "Body invalide ou non JSON" }));
       }
     });
+  } else if (req.method === "GET" && url.pathname.startsWith("/grids/") && id) {
+    try {
+      const [{ alive_cells: aliveCells }] = await getGrid(id);
+      console.log("Données reçus:", aliveCells);
+      res.end(JSON.stringify({ data: JSON.stringify(aliveCells) }));
+    } catch (error) {
+      console.log("Impossible d'obtenir la grille: ", error.message);
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Impossible d'obtenir la grille" }));
+    }
   }
 });
 // Écouter sur le port 3000

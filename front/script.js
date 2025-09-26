@@ -95,10 +95,17 @@ document.addEventListener("DOMContentLoaded", function () {
   };
   document.body.appendChild(dbSaveButton);
 
+  const loadLocalyButton = document.createElement("button");
+  loadLocalyButton.innerText = "Charger Localement";
+  loadLocalyButton.onclick = () => {
+    grid.fetch();
+  };
+  document.body.appendChild(loadLocalyButton);
+
   const loadButton = document.createElement("button");
   loadButton.innerText = "Charger";
   loadButton.onclick = () => {
-    grid.fetchLocaly();
+    grid.fetch(2);
   };
   document.body.appendChild(loadButton);
 });
