@@ -7,6 +7,35 @@
     <title>Jeu de la vie</title>
   </head>
   <body>
+    <div id="gamecontainer">
+      <div id="gridcontainer"></div>
+      <button id="playbutton">Play</button>
+      <input type="range" min="1" max="100" value="1" id="speedslider" />
+      <div id="gridsizecontainer">
+        <input
+          type="input"
+          id="gridsizeinput"
+          placeholder="Taille de la grille"
+        />
+        <button id="gridsizebutton">Ok</button>
+      </div>
+      <div id="cellsizecontainer">
+        <input
+          type="input"
+          id="cellsizeinput"
+          placeholder="Taille d'une cellule"
+        />
+        <button id="cellsizebutton">Ok</button>
+      </div>
+      <button id="savebutton">Sauvegarder</button>
+      <button id="loadbutton">Charger</button>
+    </div>
+    <form action="/login" method="POST">
+      <label for="email">Email: </label>
+      <input type="email" name="email" /><br />
+      <label for="password">Mot de Passe: </label>
+      <input type="password" name="password" />
+    </form>
     <script type="module" src="./script.js"></script>
   </body>
 </html>

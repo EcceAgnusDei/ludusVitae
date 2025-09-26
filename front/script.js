@@ -1,18 +1,13 @@
 import { Container, Grid } from "./game.js";
 
 document.addEventListener("DOMContentLoaded", function () {
-  const game = new Container("game", document.body);
-  const gridContainer = new Container("gridcontainer", game.element);
-  const grid = new Grid("gird", gridContainer.element);
-
-  game.mount();
-  game.waitMounting(gridContainer.mount.bind(gridContainer));
-  gridContainer.waitMounting(grid.mount.bind(grid));
+  const gridContainer = document.getElementById("gridcontainer");
+  const grid = new Grid("grid", gridContainer);
+  grid.mount();
   grid.waitMounting(grid.createCells.bind(grid));
 
-  const startButton = document.createElement("button");
-  startButton.innerText = "Play";
-  startButton.onclick = (event) => {
+  const playButton = document.getElementById("playbutton");
+  playButton.onclick = (event) => {
     if (event.target.innerText === "Play") {
       event.target.innerText = "Pause";
       grid.play();
@@ -21,24 +16,14 @@ document.addEventListener("DOMContentLoaded", function () {
       grid.pause();
     }
   };
-  document.body.appendChild(startButton);
 
-  const speedSlider = document.createElement("input");
-  speedSlider.setAttribute("type", "range");
-  speedSlider.setAttribute("min", "1");
-  speedSlider.setAttribute("max", "100");
-  speedSlider.setAttribute("value", "1");
+  const speedSlider = document.getElementById("speedslider");
   speedSlider.addEventListener("input", () => {
     grid.handleSpeed(speedSlider.value);
   });
-  document.body.appendChild(speedSlider);
 
-  const gridSizeInput = document.createElement("input");
-  gridSizeInput.setAttribute("type", "input");
-  gridSizeInput.setAttribute("name", "gridsize");
-  gridSizeInput.setAttribute("placeholder", "Taille de la grille");
-  const gridSizeButton = document.createElement("button");
-  gridSizeButton.innerText = "Ok";
+  const gridSizeInput = document.getElementById("gridsizeinput");
+  const gridSizeButton = document.getElementById("gridsizebutton");
   gridSizeButton.onclick = () => {
     if (
       parseInt(gridSizeInput.value) > 0 &&
@@ -52,18 +37,9 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Veuillez entrer une valeur valide.");
     }
   };
-  const gridSizeContainer = document.createElement("div");
-  gridSizeContainer.appendChild(gridSizeInput);
-  gridSizeContainer.appendChild(gridSizeButton);
-  document.body.appendChild(gridSizeContainer);
 
-  const cellSizeInput = document.createElement("input");
-  cellSizeInput.setAttribute("type", "input");
-  cellSizeInput.setAttribute("name", "cellSize");
-  cellSizeInput.setAttribute("placeholder", "Taille d'une cellule");
-
-  const cellSizeButton = document.createElement("button");
-  cellSizeButton.innerText = "Ok";
+  const cellSizeInput = document.getElementById("cellsizeinput");
+  const cellSizeButton = document.getElementById("cellsizebutton");
   cellSizeButton.onclick = () => {
     if (
       parseInt(cellSizeInput.value) > 1 &&
@@ -76,36 +52,14 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Veuillez entrer une valeur valide.");
     }
   };
-  const cellSizeContainer = document.createElement("div");
-  cellSizeContainer.appendChild(cellSizeInput);
-  cellSizeContainer.appendChild(cellSizeButton);
-  document.body.appendChild(cellSizeContainer);
 
-  const saveButton = document.createElement("button");
-  saveButton.innerText = "Sauvegarder Localement";
+  const saveButton = document.getElementById("savebutton");
   saveButton.onclick = () => {
-    grid.saveLocaly();
-  };
-  document.body.appendChild(saveButton);
-
-  const dbSaveButton = document.createElement("button");
-  dbSaveButton.innerText = "Sauvegarder";
-  dbSaveButton.onclick = () => {
     grid.saveInDb();
   };
-  document.body.appendChild(dbSaveButton);
 
-  const loadLocalyButton = document.createElement("button");
-  loadLocalyButton.innerText = "Charger Localement";
-  loadLocalyButton.onclick = () => {
-    grid.fetch();
-  };
-  document.body.appendChild(loadLocalyButton);
-
-  const loadButton = document.createElement("button");
-  loadButton.innerText = "Charger";
+  const loadButton = document.getElementById("loadbutton");
   loadButton.onclick = () => {
     grid.fetch(2);
   };
-  document.body.appendChild(loadButton);
 });
