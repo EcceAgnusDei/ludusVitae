@@ -30,11 +30,30 @@
       <button id="savebutton">Sauvegarder</button>
       <button id="loadbutton">Charger</button>
     </div>
-    <form action="/login" method="POST">
-      <label for="email">Email: </label>
-      <input type="email" name="email" /><br />
-      <label for="password">Mot de Passe: </label>
-      <input type="password" name="password" />
+    <form id="loginform" action="">
+      <label
+        >Email: <input type="email" name="email" id="loginemail" required
+      /></label>
+      <br />
+      <label
+        >Mot de Passe:
+        <input type="password" name="password" id="loginpassword" required
+      /></label>
+      <input type="submit" value="Connexion" />
+    </form>
+    <form id="signinform" action="">
+      <label
+        >Email: <input type="email" name="email" id="signinemail" required
+      /></label>
+      <br />
+      <label
+        >Mot de Passe:
+        <input type="password" name="password" id="signinpassword" required
+      /></label>
+      <label
+        >Nom: <input type="input" name="username" id="signinname" required
+      /></label>
+      <input type="submit" value="S'inscrire" />
     </form>
     <script type="module" src="./script.js"></script>
   </body>

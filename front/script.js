@@ -1,4 +1,4 @@
-import { Container, Grid } from "./game.js";
+import { Grid } from "./game.js";
 
 document.addEventListener("DOMContentLoaded", function () {
   const gridContainer = document.getElementById("gridcontainer");
@@ -61,5 +61,57 @@ document.addEventListener("DOMContentLoaded", function () {
   const loadButton = document.getElementById("loadbutton");
   loadButton.onclick = () => {
     grid.fetch(2);
+  };
+
+  const loginForm = document.getElementById("loginform");
+  const emailInput = document.getElementById("loginemail");
+  const passwordInput = document.getElementById("loginpassword");
+  loginForm.onsubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userEmail: emailInput.value,
+          userPassword: passwordInput.value,
+        }),
+      });
+      const result = await response.json();
+      console.log(result);
+    } catch (error) {
+      console.log("Erreur lors de l'envoie du formulaire: ", error.message);
+    }
+  };
+
+  const signinForm = document.getElementById("signinform");
+  const signinEmailInput = document.getElementById("signinemail");
+  const signinPasswordInput = document.getElementById("signinpassword");
+  const signinNameInput = document.getElementById("signinname");
+  signinForm.onsubmit = async (event) => {
+    event.preventDefault();
+    if (signinPasswordInput.value.length < 7) {
+      alert("Mot de passe trop court");
+    } else {
+      try {
+        const response = await fetch("http://localhost:3000/signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userEmail: signinEmailInput.value,
+            userPassword: signinPasswordInput.value,
+            userName: signinNameInput.value,
+          }),
+        });
+        const result = await response.json();
+        console.log(result);
+      } catch (error) {
+        console.log("Erreur lors de l'envoie du formulaire: ", error.message);
+      }
+    }
   };
 });

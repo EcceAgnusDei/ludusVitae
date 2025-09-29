@@ -207,7 +207,7 @@ class Grid extends Element {
 
   async saveInDb() {
     try {
-      const response = await fetch(`http://localhost:3000`, {
+      const response = await fetch(`http://localhost:3000/post`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -260,7 +260,7 @@ class Grid extends Element {
       }
       console.log("Grille chargée");
     } catch (error) {
-      console.log("Impossible de charger la grille :", error.message);
+      console.error("Impossible de charger la grille :", error.message);
     }
   }
 
