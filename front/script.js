@@ -69,8 +69,9 @@ document.addEventListener("DOMContentLoaded", function () {
   loginForm.onsubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await fetch("http://localhost:3000/login", {
+      const response = await fetch("https://localhost:3000/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -96,7 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Mot de passe trop court");
     } else {
       try {
-        const response = await fetch("http://localhost:3000/signin", {
+        const response = await fetch("https://localhost:3000/signin", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

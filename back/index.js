@@ -1,13 +1,22 @@
 require("dotenv").config();
-const http = require("http");
+const https = require("https");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
+const { v4: uuidv4 } = require("uuid");
+const querystring = require("querystring");
+const fs = require("fs");
+
 ///////////////////////////////////////////////////////
 /////////////////////CONFIG///////////////////////////
 /////////////////////////////////////////////////////
 const user = process.env.USER;
 const password = process.env.PASSWORD;
 const database = process.env.DATABASE;
+
+const options = {
+  key: fs.readFileSync("localhost-key.pem"),
+  cert: fs.readFileSync("localhost.pem"),
+};
 
 const pool = mysql.createPool({
   host: "127.0.0.1",
@@ -21,9 +30,9 @@ const pool = mysql.createPool({
 /////////////////////////////////////////////////////////
 /////////////////////FUNCTIONS///////////////////////////
 /////////////////////////////////////////////////////////
-async function insertGrid(data) {
-  const query = "INSERT INTO grids (alive_cells, user_id) VALUES (?, 10)";
-  const values = [data];
+async function insertGrid(aliveCells, userId) {
+  const query = "INSERT INTO grids (alive_cells, user_id) VALUES (?, ?)";
+  const values = [aliveCells, userId];
   const [result] = await pool.execute(query, values);
   console.log("Données insérées avec succès, ID:", result.insertId);
 
@@ -80,134 +89,154 @@ async function addUser(name, email, userPassword) {
   }
 }
 
-async function userAuthentification(email, userPassword) {
-  const userByEmail = await getUserByEmail(email);
-  if (!userByEmail) {
-    return { success: false, message: "Ce compte n'existe pas" };
-  } else {
-    const isMatch = await bcrypt.compare(userPassword, userByEmail.password); ///!!!!!!
-    if (!isMatch) {
-      return { success: false, message: "Mot de passe incorrect" };
-    } else {
-      return { success: true, message: "Connexion réussie" };
-    }
-  }
-}
-
 /////////////////////////////////////////////////////////
 ////////////////////CREATE SERVER///////////////////////
 ////////////////////////////////////////////////////////
-const server = http.createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+try {
+  const server = https.createServer(options, async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "http://127.0.0.1:5500");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const id = url.pathname.split("/")[2];
-  //////////////////////METHODE OPTIONS///////////////////////
-  ///////////////////////////////////////////////////////////
-  if (req.method === "OPTIONS") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Le serveur accèpte la requête");
-    return;
-    ////////////////////METHODES POST////////////////////////
-    /////////////////////////////////////////////////////////
-  } else if (req.method === "POST") {
-    let body = "";
+    const url = new URL(req.url, `https://${req.headers.host}`);
 
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-    req.on("end", async () => {
-      const parsedBody = JSON.parse(body);
-      ////////////////////GRID POST/////////////////////
-      if (url.pathname === "/post") {
-        try {
-          const result = await insertGrid(JSON.stringify(parsedBody.data));
-          console.log("Résultat de l'insertion :", result);
+    const cookies = querystring.parse(req.headers.cookie || "", "; ");
+    let sessionId = cookies["sessionId"];
+    console.log(url.href);
+    //////////////////////METHODE OPTIONS///////////////////////
+    ///////////////////////////////////////////////////////////
+    if (req.method === "OPTIONS") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("Le serveur accèpte la requête");
+      return;
+      ////////////////////METHODES POST////////////////////////
+      /////////////////////////////////////////////////////////
+    } else if (req.method === "POST") {
+      let body = "";
 
-          res.writeHead(201, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({ message: "Données reçues", data: parsedBody })
-          );
-        } catch (error) {
-          console.error("Échec de l'opération d'insertion :", error.message);
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Body invalide ou non JSON" }));
-        }
-        /////////////////////LOGIN//////////////////////////
-      } else if (url.pathname === "/login") {
-        try {
-          const { userEmail, userPassword } = parsedBody;
-          const userByEmail = await getUserByEmail(userEmail);
-          if (!userByEmail) {
-            res.end({ success: false, message: "Ce compte n'existe pas" });
-          } else {
-            const isMatch = await bcrypt.compare(
-              userPassword,
-              userByEmail.password
-            ); ///!!!!!!
-            if (!isMatch) {
-              res.end({ success: false, message: "Mot de passe incorrect" });
-            } else {
-              const expiresAt = new Date(Date.now() + 3600 * 1000); // Expire dans 1h
-              await connection.execute(
-                "INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)",
-                [uuidv4(), userByEmail.id, expiresAt]
-              );
-              res.setHeader(
-                "Set-Cookie",
-                `sessionId=${sessionId}; Max-Age=${3600000}; HttpOnly; Path=/`
-              );
-              res.end({ success: true, message: "Connexion réussie" });
-            }
+      req.on("data", (chunk) => {
+        body += chunk.toString();
+      });
+      req.on("end", async () => {
+        const parsedBody = JSON.parse(body);
+        ////////////////////GRID POST/////////////////////
+        if (url.pathname === "/post") {
+          try {
+            const id = url.pathname.split("/")[2];
+            const result = await insertGrid(JSON.stringify(parsedBody.data), 2);
+            console.log("Résultat de l'insertion :", result);
+
+            res.writeHead(201, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({ message: "Données reçues", data: parsedBody })
+            );
+          } catch (error) {
+            console.error("Échec de l'opération d'insertion :", error.message);
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Body invalide ou non JSON" }));
           }
-        } catch (error) {
-          console.error(
-            "Échec de l'opération d'authentification",
-            error.message
-          );
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({ error: "Echec de l'opération d'authentification" })
-          );
+          /////////////////////LOGIN//////////////////////////
+        } else if (url.pathname === "/login") {
+          try {
+            const { userEmail, userPassword } = parsedBody;
+            const userByEmail = await getUserByEmail(userEmail);
+            if (!userByEmail) {
+              res.end(
+                JSON.stringify({
+                  success: false,
+                  message: "Ce compte n'existe pas",
+                })
+              );
+            } else {
+              const isMatch = await bcrypt.compare(
+                userPassword,
+                userByEmail.password
+              ); ///!!!!!!
+              if (!isMatch) {
+                res.end(
+                  JSON.stringify({
+                    success: false,
+                    message: "Mot de passe incorrect",
+                  })
+                );
+              } else {
+                const expiresAt = new Date(Date.now() + 3600 * 1000 * 24); // Expire dans 24h
+                await pool.execute(
+                  "INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)",
+                  [uuidv4(), userByEmail.id, expiresAt]
+                );
+                res.setHeader(
+                  "Set-Cookie",
+                  `sessionId=${uuidv4()}; Expires=${expiresAt.toUTCString()}; HttpsOnly; Path=/; SameSite=None; secure`
+                );
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(
+                  JSON.stringify({
+                    success: true,
+                    message: "Connexion réussie",
+                  })
+                );
+              }
+            }
+          } catch (error) {
+            console.error(
+              "Échec de l'opération d'authentification",
+              error.message
+            );
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({
+                error: "Echec de l'opération d'authentification",
+              })
+            );
+          }
+          ////////////////////SIGNIN//////////////////////////
+        } else if (url.pathname === "/signin") {
+          try {
+            const { userName, userEmail, userPassword } = parsedBody; //////////try!!!
+            const result = await addUser(userName, userEmail, userPassword);
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(result));
+          } catch (error) {
+            console.error("Échec de l'opération d'inscription", error.message);
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({ error: "Echec de l'opération d'inscription" })
+            );
+          }
         }
-        ////////////////////SIGNIN//////////////////////////
-      } else if (url.pathname === "/signin") {
+      });
+      ///////////////////METHODE GET/////////////////////
+      //////////////////////////////////////////////////
+    } else if (req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("Coucou");
+      ///////////////////GET GRID//////////////////////
+      if (url.pathname.startsWith("/grids/") && /^\d+$/.test(id)) {
         try {
-          const { userName, userEmail, userPassword } = parsedBody; //////////try!!!
-          const result = await addUser(userName, userEmail, userPassword);
-          res.end(JSON.stringify(result));
+          const [{ alive_cells: aliveCells }] = await getGrid(id);
+          console.log("Données reçus:", aliveCells);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ data: JSON.stringify(aliveCells) }));
         } catch (error) {
-          console.error("Échec de l'opération d'inscription", error.message);
+          console.log("Impossible d'obtenir la grille: ", error.message);
           res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({ error: "Echec de l'opération d'inscription" })
-          );
+          res.end(JSON.stringify({ error: "Impossible d'obtenir la grille" }));
         }
-      }
-    });
-    ///////////////////METHODE GET/////////////////////
-    //////////////////////////////////////////////////
-  } else if (req.method === "GET") {
-    ///////////////////GET GRID//////////////////////
-    if (url.pathname.startsWith("/grids/") && /^\d+$/.test(id)) {
-      try {
-        const [{ alive_cells: aliveCells }] = await getGrid(id);
-        console.log("Données reçus:", aliveCells);
-        res.end(JSON.stringify({ data: JSON.stringify(aliveCells) }));
-      } catch (error) {
-        console.log("Impossible d'obtenir la grille: ", error.message);
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Impossible d'obtenir la grille" }));
       }
     }
-  }
-});
+  });
 
-server.listen(3000, () => {
-  console.log("Serveur en écoute sur http://localhost:3000");
-});
+  server.listen(3000, () => {
+    console.log("Serveur en écoute sur https://localhost:3000");
+  });
+} catch (error) {
+  console.error("Erreur lors du chargement des certificats :", err.message);
+}
 
 process.on("SIGINT", async () => {
   console.log("Fermeture du serveur et du pool...");
@@ -217,8 +246,6 @@ process.on("SIGINT", async () => {
 });
 
 /*
-const cookies = querystring.parse(req.headers.cookie || '', '; ');
-let sessionId = cookies['sessionId'];
 
 //Route pour vérifier la session
     if (path === '/profile' && req.method === 'GET') {
