@@ -63,6 +63,19 @@ document.addEventListener("DOMContentLoaded", function () {
     grid.fetch(2);
   };
 
+  const loadAllButton = document.getElementById("loadallbutton");
+  loadAllButton.onclick = async () => {
+    try {
+      const response = await fetch("https://localhost:3000/grids/", {
+        method: "GET",
+      });
+      const result = await response.json();
+      console.log(result.data);
+    } catch (error) {
+      console.log("Erreur lors de la recherche des grilles: ", error.message);
+    }
+  };
+
   const loginForm = document.getElementById("loginform");
   const emailInput = document.getElementById("loginemail");
   const passwordInput = document.getElementById("loginpassword");

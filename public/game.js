@@ -232,7 +232,7 @@ class Grid extends Element {
       if (typeof gridId === "undefined") {
         aliveCellsCoords = JSON.parse(localStorage.getItem("grid"));
       } else {
-        const response = await fetch(`https://localhost:3000/grids/${gridId}`, {
+        const response = await fetch(`https://localhost:3000/grid/${gridId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
