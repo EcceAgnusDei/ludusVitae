@@ -171,7 +171,7 @@ try {
                 );
                 res.setHeader(
                   "Set-Cookie",
-                  `sessionId=${uuidv4()}; Expires=${expiresAt.toUTCString()}; HttpsOnly; Path=/; SameSite=None; secure`
+                  `sessionId=${uuidv4()}; Expires=${expiresAt.toUTCString()}; HttpsOnly; Path=/; SameSite=None; secure;`
                 );
                 res.writeHead(200, { "Content-Type": "application/json" });
                 res.end(
