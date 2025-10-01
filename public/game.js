@@ -1,7 +1,7 @@
 class Element {
-  constructor(tag, id, parent) {
+  constructor(tag, parent, id) {
     this.element = document.createElement(tag);
-    this.element.setAttribute("id", id);
+    id && this.element.setAttribute("id", id);
     this.parent = parent;
     this.noInfinitLoop = 0;
     this.id = id;
@@ -27,14 +27,16 @@ class Element {
 
 class Cell extends Element {
   constructor(
+    playable,
     x,
     y,
-    id,
     parent,
     { trackedCells, gridSize, cells, isOnGrid },
+    id,
     cellSize = "20px"
   ) {
-    super("div", id, parent);
+    super("div", parent, id);
+    this.playable = playable;
     this.x = x;
     this.y = y;
     this.cells = cells;
@@ -68,15 +70,19 @@ class Cell extends Element {
     this.element.style.height = this.cellSize;
     this.element.style.backgroundColor = "white";
     this.element.style.color = "green"; //pour le developpement
-    this.element.onclick = () => {
-      if (this.isAlive) {
-        this.setLife(false);
-        this.handleNeighbours(false);
-      } else {
-        this.setLife(true);
-        this.handleNeighbours(true);
-      }
-    };
+    this.element.setAttribute("x", this.x);
+    this.element.setAttribute("y", this.y);
+    if (this.playable) {
+      this.element.onclick = () => {
+        if (this.isAlive) {
+          this.setLife(false);
+          this.handleNeighbours(false);
+        } else {
+          this.setLife(true);
+          this.handleNeighbours(true);
+        }
+      };
+    }
   }
 
   addNeighbour() {
@@ -129,8 +135,8 @@ class Cell extends Element {
 }
 
 class Line extends Element {
-  constructor(id, parent) {
-    super("div", id, parent);
+  constructor(parent, id) {
+    super("div", parent, id);
     this.configureLine();
   }
 
@@ -140,8 +146,9 @@ class Line extends Element {
 }
 
 class Grid extends Element {
-  constructor(id, parent) {
-    super("div", id, parent);
+  constructor(playable, parent, id) {
+    super("div", parent, id);
+    this.playable = playable;
     this.trackedCells = [];
     this.cells = [];
     this.baseInterval = 2000;
@@ -153,13 +160,41 @@ class Grid extends Element {
     this.configureGrid();
   }
 
+  configureGrid() {
+    this.element.style.width = "fit-content";
+    this.waitMounting(this.createCells.bind(this));
+  }
+
+  createCells() {
+    this.element.innerHTML = ""; //réinitialisation
+    this.cells = [];
+    this.trackedCells = [];
+
+    for (let y = 1; y <= this.gridSize; y++) {
+      const line = new Line(this.element);
+      for (let x = 1; x <= this.gridSize; x++) {
+        const cell = new Cell(
+          this.playable,
+          x,
+          y,
+          line.element,
+          this,
+          `${this.id}x${x}y${y}`
+        );
+        this.cells.push(cell);
+        line.waitMounting(cell.mount.bind(cell));
+      }
+      this.waitMounting(line.mount.bind(line));
+    }
+  }
+
   popUntrackedCells() {
     this.trackedCells = this.trackedCells.filter((cell) => {
       return cell.neighbours != 0 || cell.isAlive;
     });
   }
 
-  resize(value, cellsToClickCoords = []) {
+  resize(value) {
     if (typeof value == "string") {
       this.cells.forEach((cell) => {
         cell.element.style.width = value;
@@ -168,7 +203,6 @@ class Grid extends Element {
     } else {
       this.gridSize = value;
       this.createCells();
-      this.clickCells(cellsToClickCoords);
     }
   }
 
@@ -190,10 +224,30 @@ class Grid extends Element {
     }
   }
 
-  clickCells(cellsToClick) {
-    cellsToClick.forEach(({ x, y }) => {
-      if (this.isOnGrid(x, y)) document.getElementById(`x${x}y${y}`).click();
+  toggleCells(cellsToToggle, click = false) {
+    cellsToToggle.forEach(({ x, y }) => {
+      const cellToToggle = document.getElementById(`${this.id}x${x}y${y}`);
+      if (click) {
+        cellToToggle.click();
+      } else {
+        cellToToggle.style.backgroundColor = "black";
+      }
     });
+  }
+
+  loadGrid(aliveCellsCoords) {
+    if (aliveCellsCoords && aliveCellsCoords.length > 0) {
+      const maxX = aliveCellsCoords.reduce((max, obj) =>
+        obj["x"] > max["x"] ? obj : max
+      );
+      const maxY = aliveCellsCoords.reduce((max, obj) =>
+        obj["y"] > max["y"] ? obj : max
+      );
+      const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
+      this.resize(gridSize);
+      this.toggleCells(aliveCellsCoords, true);
+      console.log("Grille chargée");
+    }
   }
 
   saveLocaly() {
@@ -246,19 +300,9 @@ class Grid extends Element {
         }
         const result = await response.json();
         aliveCellsCoords = JSON.parse(result.data);
+        this.loadGrid(aliveCellsCoords);
         console.log("Données chargées avec succés : ", result.data);
       }
-      if (aliveCellsCoords.length > 0) {
-        const maxX = aliveCellsCoords.reduce((max, obj) =>
-          obj["x"] > max["x"] ? obj : max
-        );
-        const maxY = aliveCellsCoords.reduce((max, obj) =>
-          obj["y"] > max["y"] ? obj : max
-        );
-        const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-        this.resize(gridSize, aliveCellsCoords);
-      }
-      console.log("Grille chargée");
     } catch (error) {
       console.error("Impossible de charger la grille :", error.message);
     }
@@ -299,26 +343,6 @@ class Grid extends Element {
   pause() {
     this.isPlaying = false;
     clearTimeout(this.timerId);
-  }
-
-  configureGrid() {
-    this.element.style.width = "fit-content";
-  }
-
-  createCells() {
-    this.element.innerHTML = ""; //réinitialisation
-    this.cells = [];
-    this.trackedCells = [];
-
-    for (let y = 1; y <= this.gridSize; y++) {
-      const line = new Line(`line${y}`, this.element);
-      for (let x = 1; x <= this.gridSize; x++) {
-        const cell = new Cell(x, y, `x${x}y${y}`, line.element, this);
-        this.cells.push(cell);
-        line.waitMounting(cell.mount.bind(cell));
-      }
-      this.waitMounting(line.mount.bind(line));
-    }
   }
 }
 

@@ -2,9 +2,8 @@ import { Grid } from "./game.js";
 
 document.addEventListener("DOMContentLoaded", function () {
   const gridContainer = document.getElementById("gridcontainer");
-  const grid = new Grid("grid", gridContainer);
+  const grid = new Grid(true, gridContainer, "gamegrid");
   grid.mount();
-  grid.waitMounting(grid.createCells.bind(grid));
 
   const playButton = document.getElementById("playbutton");
   playButton.onclick = (event) => {
@@ -30,7 +29,8 @@ document.addEventListener("DOMContentLoaded", function () {
       parseInt(gridSizeInput.value) < 101
     ) {
       const cellsToClick = grid.getAliveCellsCoords();
-      grid.resize(parseInt(gridSizeInput.value), cellsToClick);
+      grid.resize(parseInt(gridSizeInput.value));
+      grid.toggleCells(cellsToClick, true);
       gridSizeInput.value = "";
     } else {
       gridSizeInput.value = "";
@@ -45,7 +45,9 @@ document.addEventListener("DOMContentLoaded", function () {
       parseInt(cellSizeInput.value) > 1 &&
       parseInt(cellSizeInput.value) < 71
     ) {
-      grid.resize(cellSizeInput.value + "px", grid.getAliveCellsCoords());
+      const cellsToClick = grid.getAliveCellsCoords();
+      grid.resize(cellSizeInput.value + "px");
+      grid.toggleCells(cellsToClick, true);
       cellSizeInput.value = "";
     } else {
       cellSizeInput.value = "";
@@ -70,7 +72,15 @@ document.addEventListener("DOMContentLoaded", function () {
         method: "GET",
       });
       const result = await response.json();
-      console.log(result.data);
+      result.data.forEach((aliveCellsCoords, index) => {
+        const fetchedGrid = new Grid(
+          false,
+          document.getElementById("gridsdisplayer"),
+          `displayedgrid${index}`
+        );
+        fetchedGrid.mount();
+        fetchedGrid.toggleCells(aliveCellsCoords);
+      });
     } catch (error) {
       console.log("Erreur lors de la recherche des grilles: ", error.message);
     }

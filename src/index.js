@@ -50,8 +50,9 @@ async function getAllGrids() {
   const query = "SELECT alive_cells FROM grids";
 
   const [grids] = await pool.execute(query);
-  console.log("Grilles trouvées avec succès: ");
-  return grids;
+  const parsedGrids = grids.map((grid) => grid.alive_cells);
+  console.log("Grilles trouvées avec succès");
+  return parsedGrids;
 }
 
 async function getGridsByUserId(userId) {
