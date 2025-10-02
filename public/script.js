@@ -1,5 +1,33 @@
 import { Grid } from "./game.js";
 
+async function fetchGrids(path) {
+  try {
+    const response = await fetch(`https://localhost:3000/${path}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const result = await response.json();
+    result.data.forEach((grid, index) => {
+      const gridContainer = document.createElement("div");
+      document.getElementById("gridsdisplayer").appendChild(gridContainer);
+      const fetchedGrid = new Grid(
+        false,
+        gridContainer,
+        `displayedgrid${index}`
+      );
+      fetchedGrid.mount();
+      fetchedGrid.loadGrid(grid.alive_cells); ////!!!! agrandir grille au cas où
+      fetchedGrid.setLikes(grid.likes);
+    });
+  } catch (error) {
+    console.log(
+      "Erreur lors de la recherche des grilles: ",
+      error.message,
+      error.stack
+    );
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const gridContainer = document.getElementById("gridcontainer");
   const grid = new Grid(true, gridContainer, "gamegrid");
@@ -21,20 +49,30 @@ document.addEventListener("DOMContentLoaded", function () {
     grid.handleSpeed(speedSlider.value);
   });
 
-  const gridSizeInput = document.getElementById("gridsizeinput");
+  const gridSizeInputX = document.getElementById("gridsizeinputx");
+  gridSizeInputX.value = `${grid.gridSize.x}`;
+  const gridSizeInputY = document.getElementById("gridsizeinputy");
+  gridSizeInputY.value = `${grid.gridSize.y}`;
   const gridSizeButton = document.getElementById("gridsizebutton");
   gridSizeButton.onclick = () => {
     if (
-      parseInt(gridSizeInput.value) > 0 &&
-      parseInt(gridSizeInput.value) < 101
+      parseInt(gridSizeInputX.value) > 0 &&
+      parseInt(gridSizeInputX.value) < 101 &&
+      parseInt(gridSizeInputY.value) > 0 &&
+      parseInt(gridSizeInputY.value) < 101
     ) {
+      const x = parseInt(gridSizeInputX.value);
+      const y = parseInt(gridSizeInputY.value);
       const cellsToClick = grid.getAliveCellsCoords();
-      grid.resize(parseInt(gridSizeInput.value));
+      grid.resize({
+        x,
+        y,
+      });
       grid.toggleCells(cellsToClick, true);
-      gridSizeInput.value = "";
+      gridSizeInputX.value = `${x}`;
+      gridSizeInputY.value = `${y}`;
     } else {
-      gridSizeInput.value = "";
-      alert("Veuillez entrer une valeur valide.");
+      alert("Entrez une valeur entre 1 et 100");
     }
   };
 
@@ -51,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
       cellSizeInput.value = "";
     } else {
       cellSizeInput.value = "";
-      alert("Veuillez entrer une valeur valide.");
+      alert("Entrez une valeur entre 0 et 70");
     }
   };
 
@@ -66,25 +104,10 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const loadAllButton = document.getElementById("loadallbutton");
-  loadAllButton.onclick = async () => {
-    try {
-      const response = await fetch("https://localhost:3000/grids/", {
-        method: "GET",
-      });
-      const result = await response.json();
-      result.data.forEach((aliveCellsCoords, index) => {
-        const fetchedGrid = new Grid(
-          false,
-          document.getElementById("gridsdisplayer"),
-          `displayedgrid${index}`
-        );
-        fetchedGrid.mount();
-        fetchedGrid.toggleCells(aliveCellsCoords);
-      });
-    } catch (error) {
-      console.log("Erreur lors de la recherche des grilles: ", error.message);
-    }
-  };
+  loadAllButton.onclick = () => fetchGrids("grids/");
+
+  const loadUserGridsButton = document.getElementById("loadusergridbutton");
+  loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
 
   const loginForm = document.getElementById("loginform");
   const emailInput = document.getElementById("loginemail");

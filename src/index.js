@@ -38,7 +38,7 @@ async function insertGrid(aliveCells, userId) {
 }
 
 async function getGrid(gridId) {
-  const query = "SELECT alive_cells FROM grids WHERE grid_id = ?";
+  const query = "SELECT alive_cells, likes FROM grids WHERE grid_id = ?";
   const values = [gridId];
 
   const [grid] = await pool.execute(query, values);
@@ -47,21 +47,20 @@ async function getGrid(gridId) {
 }
 
 async function getAllGrids() {
-  const query = "SELECT alive_cells FROM grids";
+  const query = "SELECT alive_cells, likes FROM grids";
 
   const [grids] = await pool.execute(query);
-  const parsedGrids = grids.map((grid) => grid.alive_cells);
   console.log("Grilles trouvées avec succès");
-  return parsedGrids;
+  return grids;
 }
 
 async function getGridsByUserId(userId) {
-  const query = "SELECT alive_cells FROM grids WHERE user_id = ?";
+  const query = "SELECT alive_cells,likes FROM grids WHERE user_id = ?";
   const values = [userId];
 
-  const [grid] = await pool.execute(query, values);
-  console.log("Grilles trouvées avec succès: ");
-  return grid;
+  const [grids] = await pool.execute(query, values);
+  console.log("Grilles de l'utilisateur trouvées avec succès");
+  return grids;
 }
 
 async function getUserByEmail(email) {
@@ -80,6 +79,22 @@ async function getUserByName(name) {
   if (rows.length === 0) {
     return false;
   } else return rows[0];
+}
+
+async function getUserBySessionId(req) {
+  const cookies = querystring.parse(req.headers.cookie || "", "; ");
+  let sessionId = cookies["sessionId"];
+  if (sessionId) {
+    const query =
+      "SELECT u.* FROM users u JOIN sessions s ON u.user_id = s.user_id WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP";
+    const values = [sessionId];
+    const [result] = await pool.execute(query, values);
+    console.log("Utilisateur récupéré avec succès, ID:", result[0]);
+
+    return result[0];
+  } else {
+    return false;
+  }
 }
 
 async function addUser(name, email, userPassword) {
@@ -103,22 +118,9 @@ async function addUser(name, email, userPassword) {
     return { success: true, message: "Compte créé" };
   }
 }
-
-async function getUserBySessionId(sessionId) {
-  console.log("Session Id:", sessionId);
-  const query =
-    "SELECT u.* FROM users u JOIN sessions s ON u.user_id = s.user_id WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP";
-  const values = [sessionId];
-  const [result] = await pool.execute(query, values);
-  console.log("Utilisateur récupéré avec succès, ID:", result[0]);
-
-  return result[0];
-}
-
 /////////////////////////////////////////////////////////
 ////////////////////CREATE SERVER///////////////////////
 ////////////////////////////////////////////////////////
-let user;
 const server = https.createServer(options, async (req, res) => {
   //res.setHeader("Access-Control-Allow-Origin", "http://127.0.0.1:5500");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
@@ -145,9 +147,9 @@ const server = https.createServer(options, async (req, res) => {
       const parsedBody = JSON.parse(body);
       ////////////////////GRID POST/////////////////////
       if (url.pathname === "/post") {
+        const user = await getUserBySessionId(req);
         try {
           if (user) {
-            console.log(user);
             const result = await insertGrid(
               JSON.stringify(parsedBody.data),
               user.user_id
@@ -269,15 +271,22 @@ const server = https.createServer(options, async (req, res) => {
         res.end(JSON.stringify({ error: error.message }));
       }
     }
+    /////////////////GET USER GRIDS//////////////////
+    else if (url.pathname === "/mygrids/") {
+      try {
+        const user = await getUserBySessionId(req);
+        const [...grids] = await getGridsByUserId(user.user_id);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ data: grids }));
+      } catch (error) {
+        console.log("Impossible d'obtenir les grille: ", error.message);
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+    }
     ////////////////////////HOME PAGE/////////////////////
     else if (url.pathname.startsWith("/")) {
       try {
-        const cookies = querystring.parse(req.headers.cookie || "", "; ");
-        let sessionId = cookies["sessionId"];
-        if (sessionId) {
-          user = await getUserBySessionId(sessionId);
-        }
-
         const mimeTypes = {
           ".html": "text/html",
           ".css": "text/css",

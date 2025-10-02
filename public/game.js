@@ -31,7 +31,7 @@ class Cell extends Element {
     x,
     y,
     parent,
-    { trackedCells, gridSize, cells, isOnGrid },
+    { trackedCells, cells, gridSize },
     id,
     cellSize = "20px"
   ) {
@@ -40,28 +40,13 @@ class Cell extends Element {
     this.x = x;
     this.y = y;
     this.cells = cells;
-    this.gridSize = gridSize;
     this.trackedCells = trackedCells;
-    this.isOnGrid = isOnGrid;
+    this.gridSize = gridSize;
     this.cellSize = cellSize;
     this.isAlive = false;
     this.willBeAlive = false;
     this.neighbours = 0;
     this.configureCell();
-  }
-
-  willItBeAlive() {
-    if (this.isAlive) {
-      if (this.neighbours == 2 || this.neighbours == 3) {
-        this.willBeAlive = true;
-      } else {
-        this.willBeAlive = false;
-      }
-    } else if (this.neighbours == 3) {
-      this.willBeAlive = true;
-    } else {
-      this.willBeAlive = false;
-    }
   }
 
   configureCell() {
@@ -82,6 +67,33 @@ class Cell extends Element {
           this.handleNeighbours(true);
         }
       };
+    }
+  }
+
+  willItBeAlive() {
+    if (this.isAlive) {
+      if (this.neighbours == 2 || this.neighbours == 3) {
+        this.willBeAlive = true;
+      } else {
+        this.willBeAlive = false;
+      }
+    } else if (this.neighbours == 3) {
+      this.willBeAlive = true;
+    } else {
+      this.willBeAlive = false;
+    }
+  }
+
+  isOnGrid() {
+    if (
+      this.x <= 0 ||
+      this.x > this.gridSize.x ||
+      this.y <= 0 ||
+      this.y > this.gridSize.y
+    ) {
+      return false;
+    } else {
+      return true;
     }
   }
 
@@ -152,17 +164,26 @@ class Grid extends Element {
     this.trackedCells = [];
     this.cells = [];
     this.baseInterval = 2000;
-    this.gridSize = 10;
+    this.gridSize = { x: 10, y: 10 };
     this.isPlaying = false;
     this.timerId = null;
     this.devider = 1;
     this.count = 0;
+    this.likeButton;
     this.configureGrid();
   }
 
   configureGrid() {
+    console.log(this.parent);
     this.element.style.width = "fit-content";
     this.waitMounting(this.createCells.bind(this));
+    if (!this.playable) {
+      this.likeButton = document.createElement("button");
+      this.likeButton.onclick = () => {
+        console.log("coucou");
+      };
+      this.parent.appendChild(this.likeButton);
+    }
   }
 
   createCells() {
@@ -170,9 +191,9 @@ class Grid extends Element {
     this.cells = [];
     this.trackedCells = [];
 
-    for (let y = 1; y <= this.gridSize; y++) {
+    for (let y = 1; y <= this.gridSize.y; y++) {
       const line = new Line(this.element);
-      for (let x = 1; x <= this.gridSize; x++) {
+      for (let x = 1; x <= this.gridSize.x; x++) {
         const cell = new Cell(
           this.playable,
           x,
@@ -194,6 +215,10 @@ class Grid extends Element {
     });
   }
 
+  setLikes(likes) {
+    this.likeButton.innerHTML = `${likes} Likes`;
+  }
+
   resize(value) {
     if (typeof value == "string") {
       this.cells.forEach((cell) => {
@@ -201,7 +226,8 @@ class Grid extends Element {
         cell.element.style.height = value;
       });
     } else {
-      this.gridSize = value;
+      this.gridSize.x = value.x;
+      this.gridSize.y = value.y;
       this.createCells();
     }
   }
@@ -216,17 +242,10 @@ class Grid extends Element {
     return aliveCellsCoords;
   }
 
-  isOnGrid(x, y) {
-    if (x <= 0 || x > this.gridSize || y <= 0 || y > this.gridSize) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-
   toggleCells(cellsToToggle, click = false) {
     cellsToToggle.forEach(({ x, y }) => {
       const cellToToggle = document.getElementById(`${this.id}x${x}y${y}`);
+      console.log(cellToToggle);
       if (click) {
         cellToToggle.click();
       } else {
@@ -235,7 +254,7 @@ class Grid extends Element {
     });
   }
 
-  loadGrid(aliveCellsCoords) {
+  loadGrid(aliveCellsCoords, marge = 1, click = false) {
     if (aliveCellsCoords && aliveCellsCoords.length > 0) {
       const maxX = aliveCellsCoords.reduce((max, obj) =>
         obj["x"] > max["x"] ? obj : max
@@ -243,9 +262,8 @@ class Grid extends Element {
       const maxY = aliveCellsCoords.reduce((max, obj) =>
         obj["y"] > max["y"] ? obj : max
       );
-      const gridSize = maxX.x > maxY.y ? maxX.x + 15 : maxY.y + 15;
-      this.resize(gridSize);
-      this.toggleCells(aliveCellsCoords, true);
+      this.resize({ x: maxX.x + marge, y: maxY.y + marge });
+      this.toggleCells(aliveCellsCoords, click);
       console.log("Grille chargée");
     }
   }
@@ -300,7 +318,7 @@ class Grid extends Element {
         }
         const result = await response.json();
         aliveCellsCoords = JSON.parse(result.data);
-        this.loadGrid(aliveCellsCoords);
+        this.loadGrid(aliveCellsCoords, 10, true);
         console.log("Données chargées avec succés : ", result.data);
       }
     } catch (error) {
