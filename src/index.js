@@ -37,6 +37,66 @@ async function insertGrid(aliveCells, userId) {
   return result;
 }
 
+async function likeGrid(gridId, userId) {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    await connection.beginTransaction();
+
+    await connection.query(
+      "UPDATE grids SET likes = likes + 1 WHERE grid_id = ?;",
+      [gridId]
+    );
+    await connection.query(
+      "UPDATE users SET liked_grids = JSON_ARRAY_APPEND(liked_grids, '$', ?) WHERE user_id = ?;",
+      [gridId, userId]
+    );
+
+    await connection.commit();
+    console.log("Grille likée avec succès");
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Erreur lors du like", error.message);
+    throw error;
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+async function unLikeGrid(gridId, userId) {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    await connection.beginTransaction();
+
+    await connection.query(
+      "UPDATE grids SET likes = likes - 1 WHERE grid_id = ?;",
+      [gridId]
+    );
+    await connection.query(
+      `UPDATE users
+      SET liked_grids = JSON_REMOVE(
+        liked_grids,
+        JSON_UNQUOTE(JSON_SEARCH(liked_grids, 'one', ?))
+      )
+      WHERE user_id = ?
+      AND JSON_SEARCH(liked_grids, 'one', ?) IS NOT NULL;`,
+      [gridId, userId, gridId]
+    );
+
+    await connection.commit();
+    console.log("Grille unlikée avec succès");
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Erreur lors du unlike", error.message);
+    throw error;
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
 async function getGrid(gridId) {
   const query = "SELECT alive_cells, likes FROM grids WHERE grid_id = ?";
   const values = [gridId];
@@ -47,7 +107,7 @@ async function getGrid(gridId) {
 }
 
 async function getAllGrids() {
-  const query = "SELECT alive_cells, likes FROM grids";
+  const query = "SELECT alive_cells, likes, grid_id FROM grids";
 
   const [grids] = await pool.execute(query);
   console.log("Grilles trouvées avec succès");
@@ -55,7 +115,8 @@ async function getAllGrids() {
 }
 
 async function getGridsByUserId(userId) {
-  const query = "SELECT alive_cells,likes FROM grids WHERE user_id = ?";
+  const query =
+    "SELECT alive_cells,likes, grid_id FROM grids WHERE user_id = ?";
   const values = [userId];
 
   const [grids] = await pool.execute(query, values);
@@ -111,7 +172,7 @@ async function addUser(name, email, userPassword) {
     return { success: false, message: "Nom déjà existant" };
   } else {
     const query =
-      "INSERT INTO users (user_name, password, email) VALUES (?, ?, ?)";
+      "INSERT INTO users (user_name, password, email, liked_grids) VALUES (?, ?, ?,JSON_ARRAY())";
     const values = [name, hashedPassword, email];
     const [result] = await pool.execute(query, values);
     console.log("Utilisateur enregistré avec succès:", result);
@@ -128,6 +189,7 @@ const server = https.createServer(options, async (req, res) => {
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
   const url = new URL(req.url, `https://${req.headers.host}`);
+  const user = await getUserBySessionId(req);
 
   //////////////////////METHODE OPTIONS///////////////////////
   ///////////////////////////////////////////////////////////
@@ -147,7 +209,6 @@ const server = https.createServer(options, async (req, res) => {
       const parsedBody = JSON.parse(body);
       ////////////////////GRID POST/////////////////////
       if (url.pathname === "/post") {
-        const user = await getUserBySessionId(req);
         try {
           if (user) {
             const result = await insertGrid(
@@ -264,7 +325,7 @@ const server = https.createServer(options, async (req, res) => {
       try {
         const [...grids] = await getAllGrids();
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ data: grids }));
+        res.end(JSON.stringify({ data: { grids, user } }));
       } catch (error) {
         console.log("Impossible d'obtenir les grille: ", error.message);
         res.writeHead(400, { "Content-Type": "application/json" });
@@ -274,10 +335,9 @@ const server = https.createServer(options, async (req, res) => {
     /////////////////GET USER GRIDS//////////////////
     else if (url.pathname === "/mygrids/") {
       try {
-        const user = await getUserBySessionId(req);
         const [...grids] = await getGridsByUserId(user.user_id);
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ data: grids }));
+        res.end(JSON.stringify({ data: { grids, user } }));
       } catch (error) {
         console.log("Impossible d'obtenir les grille: ", error.message);
         res.writeHead(400, { "Content-Type": "application/json" });
@@ -307,6 +367,35 @@ const server = https.createServer(options, async (req, res) => {
         console.log("Impossible de charger la page ", error.message);
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         res.end("404 Fichier non trouvé");
+      }
+    }
+    ////////////////////METHODE PUT//////////////////////
+    /////////////////////////////////////////////////////
+  } else if (req.method === "PUT") {
+    console.log("url methode put", url.pathname);
+    const gridId = url.pathname.split("/")[2];
+    //////////////////LIKE GRID/////////////////////
+    if (url.pathname.startsWith("/like/") && /^\d+$/.test(gridId)) {
+      try {
+        await likeGrid(gridId, user.user_id);
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ data: "Grille likée" }));
+      } catch (error) {
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+        console.log("La gille n'a pas peu être likée", error.message);
+      }
+    }
+    //////////////////UNLIKE GRID////////////////////////
+    else if (url.pathname.startsWith("/unlike/") && /^\d+$/.test(gridId)) {
+      try {
+        await unLikeGrid(gridId, user.user_id);
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ data: "Grille unlikée" }));
+      } catch (error) {
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+        console.log("La gille n'a pas peu être unlikée", error.message);
       }
     }
   }

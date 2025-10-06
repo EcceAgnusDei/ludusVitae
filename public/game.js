@@ -167,23 +167,15 @@ class Grid extends Element {
     this.gridSize = { x: 10, y: 10 };
     this.isPlaying = false;
     this.timerId = null;
+    this.dbId;
     this.devider = 1;
     this.count = 0;
-    this.likeButton;
     this.configureGrid();
   }
 
   configureGrid() {
-    console.log(this.parent);
     this.element.style.width = "fit-content";
     this.waitMounting(this.createCells.bind(this));
-    if (!this.playable) {
-      this.likeButton = document.createElement("button");
-      this.likeButton.onclick = () => {
-        console.log("coucou");
-      };
-      this.parent.appendChild(this.likeButton);
-    }
   }
 
   createCells() {
@@ -215,10 +207,6 @@ class Grid extends Element {
     });
   }
 
-  setLikes(likes) {
-    this.likeButton.innerHTML = `${likes} Likes`;
-  }
-
   resize(value) {
     if (typeof value == "string") {
       this.cells.forEach((cell) => {
@@ -245,7 +233,6 @@ class Grid extends Element {
   toggleCells(cellsToToggle, click = false) {
     cellsToToggle.forEach(({ x, y }) => {
       const cellToToggle = document.getElementById(`${this.id}x${x}y${y}`);
-      console.log(cellToToggle);
       if (click) {
         cellToToggle.click();
       } else {
@@ -254,7 +241,7 @@ class Grid extends Element {
     });
   }
 
-  loadGrid(aliveCellsCoords, marge = 1, click = false) {
+  loadGrid(aliveCellsCoords, marge = 5, click = false) {
     if (aliveCellsCoords && aliveCellsCoords.length > 0) {
       const maxX = aliveCellsCoords.reduce((max, obj) =>
         obj["x"] > max["x"] ? obj : max

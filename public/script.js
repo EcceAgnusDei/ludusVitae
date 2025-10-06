@@ -1,5 +1,61 @@
 import { Grid } from "./game.js";
 
+function likeButton(grid, user) {
+  let state = user.liked_grids.includes(grid.grid_id + "") ? "unlike" : "like";
+  const button = document.createElement("button");
+  button.innerText = state;
+  async function like() {
+    try {
+      const response = await fetch(
+        `https://localhost:3000/like/${grid.grid_id}`,
+        {
+          method: "PUT",
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(result.data);
+    } catch (error) {
+      console.error("Erreur lors du like", error.message);
+    }
+  }
+  async function unlike() {
+    try {
+      const response = await fetch(
+        `https://localhost:3000/unlike/${grid.grid_id}`,
+        {
+          method: "PUT",
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(result.data);
+    } catch (error) {
+      console.error("Erreur lors du unlike: ", error.message);
+    }
+  }
+
+  button.onclick = () => {
+    if (state === "like") {
+      like();
+      state = "unlike";
+    } else if (state === "unlike") {
+      unlike();
+      state = "like";
+    }
+    button.innerHTML = state;
+  };
+  return button;
+}
+
 async function fetchGrids(path) {
   try {
     const response = await fetch(`https://localhost:3000/${path}`, {
@@ -7,8 +63,10 @@ async function fetchGrids(path) {
       credentials: "include",
     });
     const result = await response.json();
-    result.data.forEach((grid, index) => {
+    result.data.grids.forEach((grid, index) => {
       const gridContainer = document.createElement("div");
+      const likesContainer = document.createElement("div");
+      const likesNumber = document.createElement("div");
       document.getElementById("gridsdisplayer").appendChild(gridContainer);
       const fetchedGrid = new Grid(
         false,
@@ -16,8 +74,18 @@ async function fetchGrids(path) {
         `displayedgrid${index}`
       );
       fetchedGrid.mount();
-      fetchedGrid.loadGrid(grid.alive_cells); ////!!!! agrandir grille au cas où
-      fetchedGrid.setLikes(grid.likes);
+      fetchedGrid.loadGrid(grid.alive_cells);
+      gridContainer.appendChild(likesContainer);
+      likesContainer.style.display = "flex";
+      likesContainer.appendChild(likesNumber);
+      likesNumber.innerText = grid.likes;
+      if (result.data.user) {
+        likesContainer.appendChild(likeButton(grid, result.data.user));
+      } else {
+        const likesText = document.createElement("div");
+        likesText.innerText = "likes";
+        likesContainer.appendChild(likesText);
+      }
     });
   } catch (error) {
     console.log(
