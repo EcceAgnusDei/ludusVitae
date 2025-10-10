@@ -1,55 +1,55 @@
 import { Grid } from "./game.js";
 
 function likeButton(grid, user) {
-  let state = user.liked_grids.includes(grid.grid_id + "") ? "unlike" : "like";
+  let state = grid.likes.includes(user.user_id + "") ? "unlike" : "like";
   const button = document.createElement("button");
   button.innerText = state;
   async function like() {
-    try {
-      const response = await fetch(
-        `https://localhost:3000/like/${grid.grid_id}`,
-        {
-          method: "PUT",
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
+    const response = await fetch(
+      `https://localhost:3000/like/${grid.grid_id}`,
+      {
+        method: "PUT",
       }
-
-      const result = await response.json();
-      console.log(result.data);
-    } catch (error) {
-      console.error("Erreur lors du like", error.message);
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
     }
+
+    const result = await response.json();
+    console.log(result.data);
+    state = "unlike";
   }
   async function unlike() {
-    try {
-      const response = await fetch(
-        `https://localhost:3000/unlike/${grid.grid_id}`,
-        {
-          method: "PUT",
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
+    const response = await fetch(
+      `https://localhost:3000/unlike/${grid.grid_id}`,
+      {
+        method: "PUT",
       }
-
-      const result = await response.json();
-      console.log(result.data);
-    } catch (error) {
-      console.error("Erreur lors du unlike: ", error.message);
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
     }
+
+    const result = await response.json();
+    console.log(result.data);
+    state = "like";
   }
 
-  button.onclick = () => {
+  button.onclick = async () => {
     if (state === "like") {
-      like();
-      state = "unlike";
+      try {
+        await like();
+      } catch (error) {
+        console.log("Erreur lors du like:", error.message);
+      }
     } else if (state === "unlike") {
-      unlike();
-      state = "like";
+      try {
+        await unlike();
+      } catch (error) {
+        console.log("Erreur lors du unlike:", error.message);
+      }
     }
     button.innerHTML = state;
   };
@@ -78,7 +78,7 @@ async function fetchGrids(path) {
       gridContainer.appendChild(likesContainer);
       likesContainer.style.display = "flex";
       likesContainer.appendChild(likesNumber);
-      likesNumber.innerText = grid.likes;
+      likesNumber.innerText = grid.likes.length;
       if (result.data.user) {
         likesContainer.appendChild(likeButton(grid, result.data.user));
       } else {
@@ -96,7 +96,97 @@ async function fetchGrids(path) {
   }
 }
 
+function hundleLogin() {
+  const loginForm = document.getElementById("loginform");
+  const logoutButton = document.getElementById("logoutbutton");
+  logoutButton.onclick = async () => {
+    const result = await logout();
+    console.log(result);
+    if (result.success) {
+      changeState("logout");
+    }
+  };
+
+  function changeState(state) {
+    if (state === "login") {
+      loginForm.style.display = "none";
+      logoutButton.style.display = "block";
+    } else {
+      loginForm.style.display = "block";
+      logoutButton.style.display = "none";
+    }
+  }
+
+  async function logout() {
+    const resp = await fetch(`https://localhost:3000/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const result = await resp.json();
+    return result;
+  }
+
+  (async function authentifyWithSessionId() {
+    try {
+      const resp = await fetch("https://localhost:3000/login", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!resp.ok) {
+        const errorData = await resp.json();
+        throw new Error(`Erreur HTTP : ${errorData.error || resp.status}`);
+      }
+      const result = await resp.json();
+      if (result.success) {
+        changeState("login");
+        return result.data;
+      } else {
+        return undefined;
+      }
+    } catch (error) {
+      console.log(
+        "Erreur lors de l'authentification de démarrage: ",
+        error.message,
+        error.stack
+      );
+      return undefined;
+    }
+  })();
+
+  (function handleLoginForm() {
+    const emailInput = document.getElementById("loginemail");
+    const passwordInput = document.getElementById("loginpassword");
+
+    loginForm.onsubmit = async (event) => {
+      event.preventDefault();
+      try {
+        const response = await fetch("https://localhost:3000/login", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userEmail: emailInput.value,
+            userPassword: passwordInput.value,
+          }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          changeState("login");
+        }
+
+        console.log(result);
+      } catch (error) {
+        console.log("Erreur lors de l'envoie du formulaire: ", error.message);
+      }
+    };
+  })();
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+  hundleLogin();
   const gridContainer = document.getElementById("gridcontainer");
   const grid = new Grid(true, gridContainer, "gamegrid");
   grid.mount();
@@ -177,30 +267,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const loadUserGridsButton = document.getElementById("loadusergridbutton");
   loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
 
-  const loginForm = document.getElementById("loginform");
-  const emailInput = document.getElementById("loginemail");
-  const passwordInput = document.getElementById("loginpassword");
-  loginForm.onsubmit = async (event) => {
-    event.preventDefault();
-    try {
-      const response = await fetch("https://localhost:3000/login", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userEmail: emailInput.value,
-          userPassword: passwordInput.value,
-        }),
-      });
-      const result = await response.json();
-      console.log(result);
-    } catch (error) {
-      console.log("Erreur lors de l'envoie du formulaire: ", error.message);
-    }
-  };
-
   const signinForm = document.getElementById("signinform");
   const signinEmailInput = document.getElementById("signinemail");
   const signinPasswordInput = document.getElementById("signinpassword");
@@ -223,7 +289,9 @@ document.addEventListener("DOMContentLoaded", function () {
           }),
         });
         const result = await response.json();
-        console.log(result);
+        if (result.success) {
+          console.log("Compte créé avec succès");
+        }
       } catch (error) {
         console.log("Erreur lors de l'envoie du formulaire: ", error.message);
       }

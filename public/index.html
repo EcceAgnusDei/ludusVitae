@@ -41,17 +41,20 @@
       <button id="loadallbutton">Charger toutes les grilles</button>
       <button id="loadusergridbutton">Charger vos grilles</button>
     </div>
-    <form id="loginform" action="">
-      <label
-        >Email: <input type="email" name="email" id="loginemail" required
-      /></label>
-      <br />
-      <label
-        >Mot de Passe:
-        <input type="password" name="password" id="loginpassword" required
-      /></label>
-      <input type="submit" value="Connexion" />
-    </form>
+    <div id="logincontainer">
+      <form id="loginform" action="">
+        <label
+          >Email: <input type="email" name="email" id="loginemail" required
+        /></label>
+        <br />
+        <label
+          >Mot de Passe:
+          <input type="password" name="password" id="loginpassword" required
+        /></label>
+        <input type="submit" value="Connexion" />
+      </form>
+      <button id="logoutbutton">Déconnexion</button>
+    </div>
     <form id="signinform" action="">
       <label
         >Email: <input type="email" name="email" id="signinemail" required
@@ -66,6 +69,7 @@
       /></label>
       <input type="submit" value="S'inscrire" />
     </form>
+
     <div id="gridsdisplayer"></div>
     <script type="module" src="./script.js"></script>
   </body>
