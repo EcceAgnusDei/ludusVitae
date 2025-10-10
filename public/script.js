@@ -183,118 +183,183 @@ function hundleLogin() {
       }
     };
   })();
+
+  (function hundleSignin() {
+    const signinForm = document.getElementById("signinform");
+    const signinEmailInput = document.getElementById("signinemail");
+    const signinPasswordInput = document.getElementById("signinpassword");
+    const signinNameInput = document.getElementById("signinname");
+    signinForm.onsubmit = async (event) => {
+      event.preventDefault();
+      if (signinPasswordInput.value.length < 7) {
+        alert("Mot de passe trop court");
+      } else {
+        try {
+          const response = await fetch("https://localhost:3000/signin", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userEmail: signinEmailInput.value,
+              userPassword: signinPasswordInput.value,
+              userName: signinNameInput.value,
+            }),
+          });
+          const result = await response.json();
+          alert(result.signin.message);
+          if (result.login.success) {
+            changeState("login");
+          }
+        } catch (error) {
+          console.log("Erreur lors de l'envoie du formulaire: ", error.message);
+          alert("Une erreur est survenue");
+        }
+      }
+    };
+  })();
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  hundleLogin();
+function hundleGame() {
   const gridContainer = document.getElementById("gridcontainer");
   const grid = new Grid(true, gridContainer, "gamegrid");
   grid.mount();
 
-  const playButton = document.getElementById("playbutton");
-  playButton.onclick = (event) => {
-    if (event.target.innerText === "Play") {
-      event.target.innerText = "Pause";
-      grid.play();
-    } else {
-      event.target.innerText = "Play";
-      grid.pause();
-    }
-  };
-
-  const speedSlider = document.getElementById("speedslider");
-  speedSlider.addEventListener("input", () => {
-    grid.handleSpeed(speedSlider.value);
-  });
-
-  const gridSizeInputX = document.getElementById("gridsizeinputx");
-  gridSizeInputX.value = `${grid.gridSize.x}`;
-  const gridSizeInputY = document.getElementById("gridsizeinputy");
-  gridSizeInputY.value = `${grid.gridSize.y}`;
-  const gridSizeButton = document.getElementById("gridsizebutton");
-  gridSizeButton.onclick = () => {
-    if (
-      parseInt(gridSizeInputX.value) > 0 &&
-      parseInt(gridSizeInputX.value) < 101 &&
-      parseInt(gridSizeInputY.value) > 0 &&
-      parseInt(gridSizeInputY.value) < 101
-    ) {
-      const x = parseInt(gridSizeInputX.value);
-      const y = parseInt(gridSizeInputY.value);
-      const cellsToClick = grid.getAliveCellsCoords();
-      grid.resize({
-        x,
-        y,
+  async function saveInDb(data) {
+    try {
+      const response = await fetch(`https://localhost:3000/post`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data }),
       });
-      grid.toggleCells(cellsToClick, true);
-      gridSizeInputX.value = `${x}`;
-      gridSizeInputY.value = `${y}`;
-    } else {
-      alert("Entrez une valeur entre 1 et 100");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Données sauvegardées avec succés : ", result.data);
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour :", error);
     }
-  };
+  }
 
-  const cellSizeInput = document.getElementById("cellsizeinput");
-  const cellSizeButton = document.getElementById("cellsizebutton");
-  cellSizeButton.onclick = () => {
-    if (
-      parseInt(cellSizeInput.value) > 1 &&
-      parseInt(cellSizeInput.value) < 71
-    ) {
-      const cellsToClick = grid.getAliveCellsCoords();
-      grid.resize(cellSizeInput.value + "px");
-      grid.toggleCells(cellsToClick, true);
-      cellSizeInput.value = "";
-    } else {
-      cellSizeInput.value = "";
-      alert("Entrez une valeur entre 0 et 70");
+  async function saveLocaly(data) {
+    try {
+      localStorage.setItem("grid", JSON.stringify(data));
+      alert("Grille enregistrée");
+    } catch {
+      alert("Impossible d'enregistrer");
     }
-  };
+  }
 
-  const saveButton = document.getElementById("savebutton");
-  saveButton.onclick = () => {
-    grid.saveInDb();
-  };
+  async function loadLocaly() {
+    try {
+      grid.loadGrid(JSON.parse(localStorage.getItem("grid")), 5, true);
+      alert("Grille chargée");
+    } catch {
+      alert("Impossible de charger la grille");
+    }
+  }
 
-  const loadButton = document.getElementById("loadbutton");
-  loadButton.onclick = () => {
-    grid.fetch(2);
-  };
+  (function hundlePlay() {
+    const playButton = document.getElementById("playbutton");
+    playButton.onclick = (event) => {
+      if (event.target.innerText === "Play") {
+        event.target.innerText = "Pause";
+        grid.play();
+      } else {
+        event.target.innerText = "Play";
+        grid.pause();
+      }
+    };
+  })();
+
+  (function hundleSpeed() {
+    const speedSlider = document.getElementById("speedslider");
+    speedSlider.addEventListener("input", () => {
+      grid.handleSpeed(speedSlider.value);
+    });
+  })();
+
+  (function hundleGridSize() {
+    const gridSizeInputX = document.getElementById("gridsizeinputx");
+    gridSizeInputX.value = `${grid.gridSize.x}`;
+    const gridSizeInputY = document.getElementById("gridsizeinputy");
+    gridSizeInputY.value = `${grid.gridSize.y}`;
+    const gridSizeButton = document.getElementById("gridsizebutton");
+    gridSizeButton.onclick = () => {
+      if (
+        parseInt(gridSizeInputX.value) > 0 &&
+        parseInt(gridSizeInputX.value) < 101 &&
+        parseInt(gridSizeInputY.value) > 0 &&
+        parseInt(gridSizeInputY.value) < 101
+      ) {
+        const x = parseInt(gridSizeInputX.value);
+        const y = parseInt(gridSizeInputY.value);
+        const cellsToClick = grid.getAliveCellsCoords();
+        grid.resize({
+          x,
+          y,
+        });
+        grid.toggleCells(cellsToClick, true);
+        gridSizeInputX.value = `${x}`;
+        gridSizeInputY.value = `${y}`;
+      } else {
+        alert("Entrez une valeur entre 1 et 100");
+      }
+    };
+  })();
+
+  (function hundleCellSize() {
+    const cellSizeInput = document.getElementById("cellsizeinput");
+    const cellSizeButton = document.getElementById("cellsizebutton");
+    cellSizeButton.onclick = () => {
+      if (
+        parseInt(cellSizeInput.value) > 1 &&
+        parseInt(cellSizeInput.value) < 71
+      ) {
+        const cellsToClick = grid.getAliveCellsCoords();
+        grid.resize(cellSizeInput.value + "px");
+        grid.toggleCells(cellsToClick, true);
+        cellSizeInput.value = "";
+      } else {
+        cellSizeInput.value = "";
+        alert("Entrez une valeur entre 0 et 70");
+      }
+    };
+  })();
+
+  (function hundleSave() {
+    const saveButton = document.getElementById("savebutton");
+    saveButton.onclick = () => {
+      saveInDb(grid.getAliveCellsCoords());
+    };
+  })();
+
+  (function hundleSaveLocaly() {
+    const saveButton = document.getElementById("savelocalybutton");
+    saveButton.onclick = () => {
+      saveLocaly(grid.getAliveCellsCoords());
+    };
+  })();
+
+  (function hundleLoad() {
+    const loadButton = document.getElementById("loadbutton");
+    loadButton.onclick = () => {
+      loadLocaly();
+    };
+  })();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  hundleLogin();
+  hundleGame();
 
   const loadAllButton = document.getElementById("loadallbutton");
   loadAllButton.onclick = () => fetchGrids("grids/");
-
   const loadUserGridsButton = document.getElementById("loadusergridbutton");
   loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
-
-  const signinForm = document.getElementById("signinform");
-  const signinEmailInput = document.getElementById("signinemail");
-  const signinPasswordInput = document.getElementById("signinpassword");
-  const signinNameInput = document.getElementById("signinname");
-  signinForm.onsubmit = async (event) => {
-    event.preventDefault();
-    if (signinPasswordInput.value.length < 7) {
-      alert("Mot de passe trop court");
-    } else {
-      try {
-        const response = await fetch("https://localhost:3000/signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userEmail: signinEmailInput.value,
-            userPassword: signinPasswordInput.value,
-            userName: signinNameInput.value,
-          }),
-        });
-        const result = await response.json();
-        if (result.success) {
-          console.log("Compte créé avec succès");
-        }
-      } catch (error) {
-        console.log("Erreur lors de l'envoie du formulaire: ", error.message);
-      }
-    }
-  };
 });

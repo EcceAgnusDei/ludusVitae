@@ -242,6 +242,8 @@ class Grid extends Element {
   }
 
   loadGrid(aliveCellsCoords, marge = 5, click = false) {
+    //////!!!!!!revoir le système de marge: charger la grille telle quelle a été enregistrée
+    console.log(typeof aliveCellsCoords);
     if (aliveCellsCoords && aliveCellsCoords.length > 0) {
       const maxX = aliveCellsCoords.reduce((max, obj) =>
         obj["x"] > max["x"] ? obj : max
@@ -255,37 +257,7 @@ class Grid extends Element {
     }
   }
 
-  saveLocaly() {
-    try {
-      localStorage.setItem("grid", JSON.stringify(this.getAliveCellsCoords()));
-      alert("Grille enregistrée");
-    } catch {
-      alert("Impossible d'enregistrer");
-    }
-  }
-
-  async saveInDb() {
-    try {
-      const response = await fetch(`https://localhost:3000/post`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ data: this.getAliveCellsCoords() }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Erreur HTTP : ${errorData.error || response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("Données sauvegardées avec succés : ", result.data);
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour :", error);
-    }
-  }
-
-  async fetch(gridId) {
+  /*async fetch(gridId) {
     try {
       let aliveCellsCoords = [];
       if (typeof gridId === "undefined") {
@@ -311,7 +283,7 @@ class Grid extends Element {
     } catch (error) {
       console.error("Impossible de charger la grille :", error.message);
     }
-  }
+  }*/
 
   handleSpeed(devider) {
     this.devider = devider;

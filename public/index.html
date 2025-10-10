@@ -37,6 +37,7 @@
         <button id="cellsizebutton">Ok</button>
       </div>
       <button id="savebutton">Sauvegarder</button>
+      <button id="savelocalybutton">Sauvegarder localement</button>
       <button id="loadbutton">Charger</button>
       <button id="loadallbutton">Charger toutes les grilles</button>
       <button id="loadusergridbutton">Charger vos grilles</button>
@@ -65,7 +66,13 @@
         <input type="password" name="password" id="signinpassword" required
       /></label>
       <label
-        >Nom: <input type="input" name="username" id="signinname" required
+        >Nom:
+        <input
+          type="input"
+          name="username"
+          id="signinname"
+          maxlength="30"
+          required
       /></label>
       <input type="submit" value="S'inscrire" />
     </form>

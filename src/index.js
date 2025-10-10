@@ -126,10 +126,8 @@ async function addUser(name, email, userPassword) {
   const userByName = await getUserByName(name);
 
   if (userByEmail) {
-    console.log("Email déjà existant", userByEmail);
     return { success: false, message: "Email déjà existant" };
   } else if (userByName) {
-    console.log("Nom déjà existant", userByName);
     return { success: false, message: "Nom déjà existant" };
   } else {
     const query =
@@ -137,7 +135,7 @@ async function addUser(name, email, userPassword) {
     const values = [name, hashedPassword, email];
     const [result] = await pool.execute(query, values);
     console.log("Utilisateur enregistré avec succès:", result);
-    return { success: true, message: "Compte créé" };
+    return { success: true, message: "Compte créé avec succès" };
   }
 }
 
@@ -303,10 +301,11 @@ const server = https.createServer(options, async (req, res) => {
         ////////////////////SIGNIN//////////////////////////
       } else if (url.pathname === "/signin") {
         try {
-          const { userName, userEmail, userPassword } = parsedBody; //////////try!!!
-          const result = await addUser(userName, userEmail, userPassword); ////ajouter connexion
+          const { userName, userEmail, userPassword } = parsedBody;
+          const signinResult = await addUser(userName, userEmail, userPassword);
+          const loginResult = await login(userEmail, userPassword, res);
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(result));
+          res.end(JSON.stringify({ signin: signinResult, login: loginResult }));
         } catch (error) {
           console.error("Échec de l'opération d'inscription", error.message);
           res.writeHead(400, { "Content-Type": "application/json" });
