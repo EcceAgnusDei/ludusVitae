@@ -335,14 +335,20 @@ function hundleGame() {
   (function hundleSave() {
     const saveButton = document.getElementById("savebutton");
     saveButton.onclick = () => {
-      saveInDb(grid.getAliveCellsCoords());
+      saveInDb({
+        aliveCells: grid.getAliveCellsCoords(),
+        size: { x: grid.gridSize },
+      });
     };
   })();
 
   (function hundleSaveLocaly() {
     const saveButton = document.getElementById("savelocalybutton");
     saveButton.onclick = () => {
-      saveLocaly(grid.getAliveCellsCoords());
+      saveLocaly({
+        aliveCells: grid.getAliveCellsCoords(),
+        size: { x: grid.gridSize },
+      });
     };
   })();
 

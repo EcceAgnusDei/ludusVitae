@@ -242,7 +242,6 @@ class Grid extends Element {
   }
 
   loadGrid(aliveCellsCoords, marge = 5, click = false) {
-    //////!!!!!!revoir le système de marge: charger la grille telle quelle a été enregistrée
     console.log(typeof aliveCellsCoords);
     if (aliveCellsCoords && aliveCellsCoords.length > 0) {
       const maxX = aliveCellsCoords.reduce((max, obj) =>

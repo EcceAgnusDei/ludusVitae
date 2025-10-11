@@ -28,10 +28,10 @@ const pool = mysql.createPool({
 /////////////////////////////////////////////////////////
 /////////////////////FUNCTIONS///////////////////////////
 /////////////////////////////////////////////////////////
-async function insertGrid(aliveCells, userId) {
+async function insertGrid(aliveCells, gridSize, userId) {
   const query =
-    "INSERT INTO grids (alive_cells, user_id, likes) VALUES (?, ?, JSON_ARRAY())";
-  const values = [aliveCells, userId];
+    "INSERT INTO grids (alive_cells, size, user_id, likes) VALUES (?, ?, ?,JSON_ARRAY())";
+  const values = [aliveCells, gridSize, userId];
   const [result] = await pool.execute(query, values);
   console.log("Grille insérée avec succès, ID:", result.insertId);
 
@@ -219,7 +219,8 @@ const server = https.createServer(options, async (req, res) => {
         try {
           if (user) {
             const result = await insertGrid(
-              JSON.stringify(parsedBody.data),
+              JSON.stringify(parsedBody.data.aliveCells),
+              JSON.stringify(parsedBody.data.gridSize), ///!!!tester
               user.user_id
             );
             console.log("Résultat de l'insertion :", result);
