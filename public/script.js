@@ -1,10 +1,41 @@
 import { Grid } from "./game.js";
 
-function likeButton(grid, user) {
-  let state = grid.likes.includes(user.user_id + "") ? "unlike" : "like";
+function likeButton(grid, userId) {
+  let state = grid.likes.includes(userId + "") ? "unlike" : "like";
+
+  const container = document.createElement("div");
+
   const button = document.createElement("button");
-  button.setAttribute("class", "loginonly");
+  button.setAttribute("class", "loginonly"); ////!!!!!optimiser le changement d'état
+  button.style.display = userId ? "block" : "none";
   button.innerText = state;
+  button.onclick = async () => {
+    if (userId) {
+      if (state === "like") {
+        try {
+          await like();
+        } catch (error) {
+          console.log("Erreur lors du like:", error.message);
+        }
+      } else if (state === "unlike") {
+        try {
+          await unlike();
+        } catch (error) {
+          console.log("Erreur lors du unlike:", error.message);
+        }
+      }
+      button.innerHTML = state;
+    }
+  };
+
+  const buttonPlaceholder = document.createElement("div");
+  buttonPlaceholder.innerText = "likes";
+  buttonPlaceholder.setAttribute("class", "logoutonly");
+  buttonPlaceholder.style.display = userId ? "none" : "block";
+
+  container.appendChild(button);
+  container.appendChild(buttonPlaceholder);
+
   async function like() {
     const response = await fetch(
       `https://localhost:3000/like/${grid.grid_id}`,
@@ -38,61 +69,7 @@ function likeButton(grid, user) {
     state = "like";
   }
 
-  button.onclick = async () => {
-    if (state === "like") {
-      try {
-        await like();
-      } catch (error) {
-        console.log("Erreur lors du like:", error.message);
-      }
-    } else if (state === "unlike") {
-      try {
-        await unlike();
-      } catch (error) {
-        console.log("Erreur lors du unlike:", error.message);
-      }
-    }
-    button.innerHTML = state;
-  };
-  return button;
-}
-
-async function fetchGrids(path) {
-  try {
-    const response = await fetch(`https://localhost:3000/${path}`, {
-      method: "GET",
-      credentials: "include",
-    });
-    const result = await response.json();
-    result.data.grids.forEach((grid, index) => {
-      const gridContainer = document.createElement("div");
-      const likesContainer = document.createElement("div");
-      const likesNumber = document.createElement("div");
-      document.getElementById("gridsdisplayer").appendChild(gridContainer);
-      const fetchedGrid = new Grid(
-        false,
-        gridContainer,
-        `displayedgrid${index}`
-      );
-      fetchedGrid.mount();
-      fetchedGrid.loadGrid(grid.alive_cells);
-      gridContainer.appendChild(likesContainer);
-      likesContainer.style.display = "flex";
-      likesContainer.appendChild(likesNumber);
-      likesNumber.innerText = grid.likes.length;
-      likesContainer.appendChild(likeButton(grid, result.data.user));
-      const likesText = document.createElement("div");
-      document.setAttribute("class", "loginonly");
-      likesText.innerText = "likes";
-      likesContainer.appendChild(likesText);
-    });
-  } catch (error) {
-    console.log(
-      "Erreur lors de la recherche des grilles: ",
-      error.message,
-      error.stack
-    );
-  }
+  return container;
 }
 
 function handleLogin() {
@@ -102,15 +79,17 @@ function handleLogin() {
   const logoutButton = document.getElementById("logoutbutton");
   logoutButton.setAttribute("class", "loginonly");
   logoutButton.onclick = async () => {
-    const result = await logout();
-    console.log(result);
-    if (result.success) {
-      changeState("logout");
+    try {
+      const result = await logout();
+      console.log(result.message);
+      if (result.success) {
+        changeState("logout");
+      }
+      userId = undefined;
+    } catch (error) {
+      console.log("Erreur lors de la déconnexion: ", error.message);
     }
   };
-
-  const loadUserGridsButton = document.getElementById("loadusergridbutton");
-  loadUserGridsButton.setAttribute("class", "loginonly");
 
   const saveButton = document.getElementById("savebutton");
   saveButton.setAttribute("class", "loginonly");
@@ -122,17 +101,13 @@ function handleLogin() {
     const logoutOnly = document.getElementsByClassName("logoutonly");
     const loginOnly = document.getElementsByClassName("loginonly");
     for (let element of logoutOnly) {
-      console.log("logout only");
       if (state === "logout") {
-        console.log("show", element);
         element.style.display = "block";
       } else {
-        console.log("hide", element);
         element.style.display = "none";
       }
     }
     for (let element of loginOnly) {
-      console.log("login only");
       if (state === "login") {
         element.style.display = "block";
       } else {
@@ -150,7 +125,7 @@ function handleLogin() {
     return result;
   }
 
-  (async function authentifyWithSessionId() {
+  (async function authentifyAtLoad() {
     try {
       const resp = await fetch("https://localhost:3000/login", {
         method: "POST",
@@ -175,7 +150,7 @@ function handleLogin() {
     }
   })();
 
-  (function handleLoginForm() {
+  (function handleLogin() {
     const emailInput = document.getElementById("loginemail");
     const passwordInput = document.getElementById("loginpassword");
 
@@ -241,11 +216,14 @@ function handleLogin() {
         }
       }
     };
-  })();
+  })(); /////!!!!!!!! gérer la navbar
 
   (function handleLoad() {
     const loadAllButton = document.getElementById("loadallbutton");
     loadAllButton.onclick = () => fetchGrids("grids/");
+
+    const loadUserGridsButton = document.getElementById("loadusergridbutton");
+    loadUserGridsButton.setAttribute("class", "loginonly");
     loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
 
     async function fetchGrids(path) {
@@ -272,13 +250,11 @@ function handleLogin() {
           likesContainer.style.display = "flex";
           likesContainer.appendChild(likesNumber);
           likesNumber.innerText = grid.likes.length;
-          if (result.data.user) {
-            likesContainer.appendChild(likeButton(grid, result.data.user)); ///!!! voir si on peut pas gérer la vérification coté client
-          } else {
-            const likesText = document.createElement("div");
-            likesText.innerText = "likes";
-            likesContainer.appendChild(likesText);
-          }
+          likesContainer.appendChild(likeButton(grid, userId)); ///!!! voir si on peut pas gérer la vérification coté client
+          /*const likesText = document.createElement("div");
+          likesText.setAttribute("class", "logoutonly");
+          likesText.innerText = "likes";
+          likesContainer.appendChild(likesText);*/
         });
       } catch (error) {
         console.log(
@@ -288,8 +264,8 @@ function handleLogin() {
         );
       }
     }
-  })();
-}
+  })(); /////!!!!!!!! gérer le changement de page et le scroll
+} ////!!!!gérer le dashboard
 
 function handleGame() {
   const gridContainer = document.getElementById("gridcontainer");

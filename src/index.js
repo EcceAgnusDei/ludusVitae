@@ -63,7 +63,7 @@ async function getGrid(gridId) {
   const values = [gridId];
 
   const [grid] = await pool.execute(query, values);
-  console.log("Grille trouvé avec succès: ", grid[0]);
+  console.log("Grille trouvé avec succès: ", grid[0].grid_id);
   return grid[0];
 }
 
@@ -73,7 +73,7 @@ async function getGrids(userId) {
     const query =
       "SELECT alive_cells,likes, grid_id, grid_size FROM grids WHERE user_id = ?";
     const [grids] = await pool.execute(query, values);
-    console.log("Grilles de l'utilisateur trouvées avec succès", grids);
+    console.log("Grilles de l'utilisateur trouvées avec succès");
     return grids;
   } else {
     const query = "SELECT alive_cells, likes, grid_id, grid_size FROM grids";
@@ -225,13 +225,12 @@ const server = https.createServer(options, async (req, res) => {
       if (url.pathname === "/post") {
         try {
           if (user) {
-            console.log(parsedBody.data);
             const result = await insertGrid(
               JSON.stringify(parsedBody.data.aliveCells),
               JSON.stringify(parsedBody.data.gridSize),
               user.user_id
             );
-            console.log("Résultat de l'insertion :", result);
+            console.log("Grid insérée", result);
           } else {
             throw new Error(
               "Seul un utilisateur identifié peut enregistrer une grille en base de données"
