@@ -241,19 +241,10 @@ class Grid extends Element {
     });
   }
 
-  loadGrid(aliveCellsCoords, marge = 5, click = false) {
-    console.log(typeof aliveCellsCoords);
-    if (aliveCellsCoords && aliveCellsCoords.length > 0) {
-      const maxX = aliveCellsCoords.reduce((max, obj) =>
-        obj["x"] > max["x"] ? obj : max
-      );
-      const maxY = aliveCellsCoords.reduce((max, obj) =>
-        obj["y"] > max["y"] ? obj : max
-      );
-      this.resize({ x: maxX.x + marge, y: maxY.y + marge });
-      this.toggleCells(aliveCellsCoords, click);
-      console.log("Grille chargée");
-    }
+  loadGrid(aliveCellsCoords, gridSize, click = false) {
+    this.resize({ x: gridSize.x, y: gridSize.y });
+    this.toggleCells(aliveCellsCoords, click);
+    console.log("Grille chargée");
   }
 
   /*async fetch(gridId) {

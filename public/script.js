@@ -3,6 +3,7 @@ import { Grid } from "./game.js";
 function likeButton(grid, user) {
   let state = grid.likes.includes(user.user_id + "") ? "unlike" : "like";
   const button = document.createElement("button");
+  button.setAttribute("class", "loginonly");
   button.innerText = state;
   async function like() {
     const response = await fetch(
@@ -79,13 +80,11 @@ async function fetchGrids(path) {
       likesContainer.style.display = "flex";
       likesContainer.appendChild(likesNumber);
       likesNumber.innerText = grid.likes.length;
-      if (result.data.user) {
-        likesContainer.appendChild(likeButton(grid, result.data.user));
-      } else {
-        const likesText = document.createElement("div");
-        likesText.innerText = "likes";
-        likesContainer.appendChild(likesText);
-      }
+      likesContainer.appendChild(likeButton(grid, result.data.user));
+      const likesText = document.createElement("div");
+      document.setAttribute("class", "loginonly");
+      likesText.innerText = "likes";
+      likesContainer.appendChild(likesText);
     });
   } catch (error) {
     console.log(
@@ -96,9 +95,12 @@ async function fetchGrids(path) {
   }
 }
 
-function hundleLogin() {
+function handleLogin() {
   const loginForm = document.getElementById("loginform");
+  loginForm.setAttribute("class", "logoutonly");
+
   const logoutButton = document.getElementById("logoutbutton");
+  logoutButton.setAttribute("class", "loginonly");
   logoutButton.onclick = async () => {
     const result = await logout();
     console.log(result);
@@ -107,13 +109,35 @@ function hundleLogin() {
     }
   };
 
+  const loadUserGridsButton = document.getElementById("loadusergridbutton");
+  loadUserGridsButton.setAttribute("class", "loginonly");
+
+  const saveButton = document.getElementById("savebutton");
+  saveButton.setAttribute("class", "loginonly");
+
+  let userId;
+  changeState("logout");
+
   function changeState(state) {
-    if (state === "login") {
-      loginForm.style.display = "none";
-      logoutButton.style.display = "block";
-    } else {
-      loginForm.style.display = "block";
-      logoutButton.style.display = "none";
+    const logoutOnly = document.getElementsByClassName("logoutonly");
+    const loginOnly = document.getElementsByClassName("loginonly");
+    for (let element of logoutOnly) {
+      console.log("logout only");
+      if (state === "logout") {
+        console.log("show", element);
+        element.style.display = "block";
+      } else {
+        console.log("hide", element);
+        element.style.display = "none";
+      }
+    }
+    for (let element of loginOnly) {
+      console.log("login only");
+      if (state === "login") {
+        element.style.display = "block";
+      } else {
+        element.style.display = "none";
+      }
     }
   }
 
@@ -139,17 +163,15 @@ function hundleLogin() {
       const result = await resp.json();
       if (result.success) {
         changeState("login");
-        return result.data;
-      } else {
-        return undefined;
+        userId = result.data.userId;
       }
+      console.log(result.message);
     } catch (error) {
       console.log(
         "Erreur lors de l'authentification de démarrage: ",
         error.message,
         error.stack
       );
-      return undefined;
     }
   })();
 
@@ -175,6 +197,7 @@ function hundleLogin() {
 
         if (result.success) {
           changeState("login");
+          userId = result.data.userId;
         }
 
         console.log(result);
@@ -184,7 +207,7 @@ function hundleLogin() {
     };
   })();
 
-  (function hundleSignin() {
+  (function handleSignin() {
     const signinForm = document.getElementById("signinform");
     const signinEmailInput = document.getElementById("signinemail");
     const signinPasswordInput = document.getElementById("signinpassword");
@@ -210,6 +233,7 @@ function hundleLogin() {
           alert(result.signin.message);
           if (result.login.success) {
             changeState("login");
+            userId = result.login.data.userId;
           }
         } catch (error) {
           console.log("Erreur lors de l'envoie du formulaire: ", error.message);
@@ -218,9 +242,56 @@ function hundleLogin() {
       }
     };
   })();
+
+  (function handleLoad() {
+    const loadAllButton = document.getElementById("loadallbutton");
+    loadAllButton.onclick = () => fetchGrids("grids/");
+    loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
+
+    async function fetchGrids(path) {
+      try {
+        const response = await fetch(`https://localhost:3000/${path}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const result = await response.json();
+        result.data.grids.forEach((grid, index) => {
+          console.log(grid);
+          const gridContainer = document.createElement("div");
+          const likesContainer = document.createElement("div");
+          const likesNumber = document.createElement("div");
+          document.getElementById("gridsdisplayer").appendChild(gridContainer);
+          const fetchedGrid = new Grid(
+            false,
+            gridContainer,
+            `displayedgrid${index}`
+          );
+          fetchedGrid.mount();
+          fetchedGrid.loadGrid(grid.alive_cells, grid.grid_size);
+          gridContainer.appendChild(likesContainer);
+          likesContainer.style.display = "flex";
+          likesContainer.appendChild(likesNumber);
+          likesNumber.innerText = grid.likes.length;
+          if (result.data.user) {
+            likesContainer.appendChild(likeButton(grid, result.data.user)); ///!!! voir si on peut pas gérer la vérification coté client
+          } else {
+            const likesText = document.createElement("div");
+            likesText.innerText = "likes";
+            likesContainer.appendChild(likesText);
+          }
+        });
+      } catch (error) {
+        console.log(
+          "Erreur lors du chargement des grilles: ",
+          error.message,
+          error.stack
+        );
+      }
+    }
+  })();
 }
 
-function hundleGame() {
+function handleGame() {
   const gridContainer = document.getElementById("gridcontainer");
   const grid = new Grid(true, gridContainer, "gamegrid");
   grid.mount();
@@ -257,14 +328,15 @@ function hundleGame() {
 
   async function loadLocaly() {
     try {
-      grid.loadGrid(JSON.parse(localStorage.getItem("grid")), 5, true);
+      const localGrid = JSON.parse(localStorage.getItem("grid"));
+      grid.loadGrid(localGrid.aliveCells, localGrid.gridSize, true);
       alert("Grille chargée");
     } catch {
       alert("Impossible de charger la grille");
     }
   }
 
-  (function hundlePlay() {
+  (function handlePlay() {
     const playButton = document.getElementById("playbutton");
     playButton.onclick = (event) => {
       if (event.target.innerText === "Play") {
@@ -277,14 +349,14 @@ function hundleGame() {
     };
   })();
 
-  (function hundleSpeed() {
+  (function handleSpeed() {
     const speedSlider = document.getElementById("speedslider");
     speedSlider.addEventListener("input", () => {
       grid.handleSpeed(speedSlider.value);
     });
   })();
 
-  (function hundleGridSize() {
+  (function handleGridSize() {
     const gridSizeInputX = document.getElementById("gridsizeinputx");
     gridSizeInputX.value = `${grid.gridSize.x}`;
     const gridSizeInputY = document.getElementById("gridsizeinputy");
@@ -313,7 +385,7 @@ function hundleGame() {
     };
   })();
 
-  (function hundleCellSize() {
+  (function handleCellSize() {
     const cellSizeInput = document.getElementById("cellsizeinput");
     const cellSizeButton = document.getElementById("cellsizebutton");
     cellSizeButton.onclick = () => {
@@ -332,27 +404,27 @@ function hundleGame() {
     };
   })();
 
-  (function hundleSave() {
+  (function handleSave() {
     const saveButton = document.getElementById("savebutton");
     saveButton.onclick = () => {
       saveInDb({
         aliveCells: grid.getAliveCellsCoords(),
-        size: { x: grid.gridSize },
+        gridSize: grid.gridSize,
       });
     };
   })();
 
-  (function hundleSaveLocaly() {
+  (function handleSaveLocaly() {
     const saveButton = document.getElementById("savelocalybutton");
     saveButton.onclick = () => {
       saveLocaly({
         aliveCells: grid.getAliveCellsCoords(),
-        size: { x: grid.gridSize },
+        gridSize: grid.gridSize,
       });
     };
   })();
 
-  (function hundleLoad() {
+  (function handleLoad() {
     const loadButton = document.getElementById("loadbutton");
     loadButton.onclick = () => {
       loadLocaly();
@@ -361,11 +433,6 @@ function hundleGame() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  hundleLogin();
-  hundleGame();
-
-  const loadAllButton = document.getElementById("loadallbutton");
-  loadAllButton.onclick = () => fetchGrids("grids/");
-  const loadUserGridsButton = document.getElementById("loadusergridbutton");
-  loadUserGridsButton.onclick = () => fetchGrids("mygrids/");
+  handleLogin();
+  handleGame();
 });

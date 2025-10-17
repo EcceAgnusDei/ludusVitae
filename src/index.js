@@ -30,7 +30,7 @@ const pool = mysql.createPool({
 /////////////////////////////////////////////////////////
 async function insertGrid(aliveCells, gridSize, userId) {
   const query =
-    "INSERT INTO grids (alive_cells, size, user_id, likes) VALUES (?, ?, ?,JSON_ARRAY())";
+    "INSERT INTO grids (alive_cells, grid_size, user_id, likes) VALUES (?, ?, ?,JSON_ARRAY())";
   const values = [aliveCells, gridSize, userId];
   const [result] = await pool.execute(query, values);
   console.log("Grille insérée avec succès, ID:", result.insertId);
@@ -67,22 +67,20 @@ async function getGrid(gridId) {
   return grid[0];
 }
 
-async function getAllGrids() {
-  const query = "SELECT alive_cells, likes, grid_id FROM grids";
-
-  const [grids] = await pool.execute(query);
-  console.log("Grilles trouvées avec succès");
-  return grids;
-}
-
-async function getGridsByUserId(userId) {
-  const query =
-    "SELECT alive_cells,likes, grid_id FROM grids WHERE user_id = ?";
-  const values = [userId];
-
-  const [grids] = await pool.execute(query, values);
-  console.log("Grilles de l'utilisateur trouvées avec succès");
-  return grids;
+async function getGrids(userId) {
+  if (userId) {
+    const values = [userId];
+    const query =
+      "SELECT alive_cells,likes, grid_id, grid_size FROM grids WHERE user_id = ?";
+    const [grids] = await pool.execute(query, values);
+    console.log("Grilles de l'utilisateur trouvées avec succès", grids);
+    return grids;
+  } else {
+    const query = "SELECT alive_cells, likes, grid_id, grid_size FROM grids";
+    const [grids] = await pool.execute(query);
+    console.log("Grilles trouvées avec succès");
+    return grids;
+  }
 }
 
 async function getUserByEmail(email) {
@@ -103,15 +101,12 @@ async function getUserByName(name) {
   } else return rows[0];
 }
 
-async function getUserBySessionId(req) {
-  const cookies = querystring.parse(req.headers.cookie || "", "; ");
-  let sessionId = cookies["sessionId"];
+async function getUserBySessionId(sessionId) {
   if (sessionId) {
     const query =
       "SELECT u.* FROM users u JOIN sessions s ON u.user_id = s.user_id WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP";
     const values = [sessionId];
     const [result] = await pool.execute(query, values);
-    console.log("Utilisateur récupéré avec succès, ID:", result[0].user_id);
 
     return result[0];
   } else {
@@ -167,15 +162,14 @@ async function login(email, password, res) {
       );
       return {
         success: true,
+        data: { userId: userByEmail.user_id },
         message: "Connexion réussie",
       };
     }
   }
 }
 
-async function logout(req, res) {
-  const cookies = querystring.parse(req.headers.cookie || "", "; ");
-  let sessionId = cookies["sessionId"];
+async function logout(sessionId, res) {
   await pool.execute("DELETE FROM sessions WHERE session_id = ?", [sessionId]);
   res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; Path=/; HttpsOnly;");
 }
@@ -187,17 +181,13 @@ const server = https.createServer(options, async (req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  const url = new URL(req.url, `https://${req.headers.host}`);
-  let user;
-  try {
-    user = await getUserBySessionId(req);
-  } catch (error) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end({
-      error: `Impossible d'authentifier l'utilisateur au démarage: ${error.message}`,
-    });
-  }
+  const allowedOrigin = "https://localhost:3000";
+  const origin = req.headers["origin"] || req.headers["referer"];
 
+  const url = new URL(req.url, `https://${req.headers.host}`);
+  const cookies = querystring.parse(req.headers.cookie || "", "; ");
+  let sessionId = cookies["sessionId"];
+  let user;
   //////////////////////METHODE OPTIONS///////////////////////
   ///////////////////////////////////////////////////////////
   if (req.method === "OPTIONS") {
@@ -207,20 +197,38 @@ const server = https.createServer(options, async (req, res) => {
     ////////////////////METHODES POST////////////////////////
     /////////////////////////////////////////////////////////
   } else if (req.method === "POST") {
-    let body = "";
+    if (!origin || !origin.startsWith(allowedOrigin)) {
+      ///contre attaques CSRF
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Requête non autorisée" }));
+      return;
+    }
 
+    try {
+      user = await getUserBySessionId(sessionId);
+    } catch (error) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end({
+        error: `Impossible d'authentifier l'utilisateur: ${error.message}`,
+      });
+      return;
+    }
+
+    let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();
     });
+
     req.on("end", async () => {
       const parsedBody = body && JSON.parse(body);
       ////////////////////GRID POST/////////////////////
       if (url.pathname === "/post") {
         try {
           if (user) {
+            console.log(parsedBody.data);
             const result = await insertGrid(
               JSON.stringify(parsedBody.data.aliveCells),
-              JSON.stringify(parsedBody.data.gridSize), ///!!!tester
+              JSON.stringify(parsedBody.data.gridSize),
               user.user_id
             );
             console.log("Résultat de l'insertion :", result);
@@ -246,7 +254,12 @@ const server = https.createServer(options, async (req, res) => {
             const { userEmail, userPassword } = parsedBody;
             const result = await login(userEmail, userPassword, res);
             res.writeHead(200, { "content-type": "application/json" });
-            res.end(JSON.stringify(result));
+            res.end(
+              JSON.stringify({
+                data: result.data.userId,
+                success: true,
+              })
+            );
           } catch (error) {
             console.error(
               "Échec de l'opération d'authentification",
@@ -263,7 +276,8 @@ const server = https.createServer(options, async (req, res) => {
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
-              data: user,
+              data: { userId: user.user_id },
+              message: "Utilisateur connecté au démarrage",
               success: true,
             })
           );
@@ -282,7 +296,7 @@ const server = https.createServer(options, async (req, res) => {
           if (!user) {
             throw new Error("Utilisateur non identifié pour: déconnexion");
           }
-          await logout(req, res);
+          await logout(sessionId, res);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
@@ -323,9 +337,13 @@ const server = https.createServer(options, async (req, res) => {
     const gridId = url.pathname.split("/")[2];
     if (url.pathname.startsWith("/grid/") && /^\d+$/.test(gridId)) {
       try {
-        const { alive_cells: aliveCells } = await getGrid(gridId);
+        const { alive_cells: aliveCells, grid_size: gridSize } = await getGrid(
+          gridId
+        );
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ data: JSON.stringify(aliveCells) }));
+        res.end(
+          JSON.stringify({ data: JSON.stringify({ aliveCells, gridSize }) })
+        );
       } catch (error) {
         console.log("Impossible d'obtenir la grille: ", error.message);
         res.writeHead(400, { "Content-Type": "application/json" });
@@ -335,7 +353,7 @@ const server = https.createServer(options, async (req, res) => {
     ///////////////GET ALL GRIDS//////////////////
     else if (url.pathname === "/grids/") {
       try {
-        const [...grids] = await getAllGrids();
+        const [...grids] = await getGrids();
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ data: { grids, user } }));
       } catch (error) {
@@ -347,7 +365,8 @@ const server = https.createServer(options, async (req, res) => {
     /////////////////GET USER GRIDS//////////////////
     else if (url.pathname === "/mygrids/") {
       try {
-        const [...grids] = await getGridsByUserId(user.user_id);
+        user = await getUserBySessionId(sessionId);
+        const [...grids] = await getGrids(user.user_id);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ data: { grids, user } }));
       } catch (error) {
@@ -356,7 +375,7 @@ const server = https.createServer(options, async (req, res) => {
         res.end(JSON.stringify({ error: error.message }));
       }
     }
-    ////////////////////////HOME PAGE/////////////////////
+    ////////////////////////GET SITE FILES/////////////////////
     else if (url.pathname.startsWith("/")) {
       try {
         const mimeTypes = {
@@ -384,8 +403,16 @@ const server = https.createServer(options, async (req, res) => {
     ////////////////////METHODE PUT//////////////////////
     /////////////////////////////////////////////////////
   } else if (req.method === "PUT") {
-    console.log("url methode put", url.pathname);
     const gridId = url.pathname.split("/")[2];
+    try {
+      user = await getUserBySessionId(sessionId);
+    } catch (error) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end({
+        error: `Impossible d'authentifier l'utilisateur: ${error.message}`,
+      });
+      return;
+    }
     //////////////////LIKE GRID/////////////////////
     if (url.pathname.startsWith("/like/") && /^\d+$/.test(gridId)) {
       try {
@@ -428,39 +455,3 @@ process.on("SIGINT", async () => {
   console.log("Pool MySQL fermé");
   process.exit();
 });
-
-/*
-
-//Route pour vérifier la session
-    if (path === '/profile' && req.method === 'GET') {
-      if (userId) {
-        const [users] = await connection.execute(
-          'SELECT username FROM users WHERE id = ?',
-          [userId]
-        );
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end(`Utilisateur connecté avec l'ID: ${userId}, Nom: ${users[0].username}`);
-      } else {
-        res.writeHead(401, { 'Content-Type': 'text/plain' });
-        res.end('Non connecté');
-      }
-      return;
-    }
-
-//Route pour déconnexion
-    if (path === '/logout' && req.method === 'POST') {
-      if (sessionId) {
-        await connection.execute('DELETE FROM sessions WHERE session_id = ?', [sessionId]);
-        setCookie(res, 'sessionId', '', 0); // Supprimer le cookie
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('Déconnexion réussie');
-      } else {
-        res.writeHead(401, { 'Content-Type': 'text/plain' });
-        res.end('Aucune session active');
-      }
-      return;
-    } 
-  
-    
-    
-    */
