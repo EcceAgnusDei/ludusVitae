@@ -7,77 +7,94 @@
     <title>Jeu de la vie</title>
   </head>
   <body>
-    <div id="gamecontainer">
-      <div id="gridcontainer"></div>
-      <button id="playbutton">Play</button>
-      <input type="range" min="1" max="100" value="1" id="speedslider" />
-      <div id="gridsizecontainer">
-        <input
-          min="0"
-          type="number"
-          value="0"
-          id="gridsizeinputx"
-          placeholder="Taille horrizontale de la grille"
-        />
-        <input
-          min="0"
-          type="number"
-          value="0"
-          id="gridsizeinputy"
-          placeholder="Taille verticale de la grille"
-        />
-        <button id="gridsizebutton">Ok</button>
+    <header>
+      <div>
+        <form id="loginform" action="">
+          <label
+            >Email: <input type="email" name="email" id="loginemail" required
+          /></label>
+          <br />
+          <label
+            >Mot de Passe:
+            <input type="password" name="password" id="loginpassword" required
+          /></label>
+          <input type="submit" value="Connexion" />
+        </form>
+        <form id="signinform" action="">
+          <label
+            >Email: <input type="email" name="email" id="signinemail" required
+          /></label>
+          <br />
+          <label
+            >Mot de Passe:
+            <input type="password" name="password" id="signinpassword" required
+          /></label>
+          <label
+            >Nom:
+            <input
+              type="input"
+              name="username"
+              id="signinname"
+              maxlength="30"
+              required
+          /></label>
+          <input type="submit" value="S'inscrire" />
+        </form>
       </div>
-      <div id="cellsizecontainer">
-        <input
-          type="number"
-          id="cellsizeinput"
-          placeholder="Taille d'une cellule"
-        />
-        <button id="cellsizebutton">Ok</button>
+      <nav>
+        <button id="home">Accueil</button>
+        <button id="create">Créer</button>
+        <button id="signin">S'inscrire</button>
+        <button id="favorites">Vos Préférées</button>
+        <button id="loadusergridbutton">Charger vos grilles</button>
+        <button id="login">Se Connecter</button>
+        <button id="logoutbutton">Déconnexion</button>
+      </nav>
+    </header>
+    <main id="page">
+      <div id="gridsdisplayerpage">
+        <nav>
+          <button id="popular">Les plus populaires</button>
+          <button id="new">Les plus récents</button>
+        </nav>
+        <div id="gridsdisplayer"></div>
       </div>
-      <button id="savebutton">Sauvegarder</button>
-      <button id="savelocalybutton">Sauvegarder localement</button>
-      <button id="loadbutton">Charger</button>
-      <button id="loadallbutton">Charger toutes les grilles</button>
-      <button id="loadusergridbutton">Charger vos grilles</button>
-    </div>
-    <div id="logincontainer">
-      <form id="loginform" action="">
-        <label
-          >Email: <input type="email" name="email" id="loginemail" required
-        /></label>
-        <br />
-        <label
-          >Mot de Passe:
-          <input type="password" name="password" id="loginpassword" required
-        /></label>
-        <input type="submit" value="Connexion" />
-      </form>
-      <button id="logoutbutton">Déconnexion</button>
-    </div>
-    <form id="signinform" action="">
-      <label
-        >Email: <input type="email" name="email" id="signinemail" required
-      /></label>
-      <br />
-      <label
-        >Mot de Passe:
-        <input type="password" name="password" id="signinpassword" required
-      /></label>
-      <label
-        >Nom:
-        <input
-          type="input"
-          name="username"
-          id="signinname"
-          maxlength="30"
-          required
-      /></label>
-      <input type="submit" value="S'inscrire" />
-    </form>
-
-    <div id="gridsdisplayer"></div>
+      <div id="createpage">
+        <div id="gamecontainer">
+          <div id="gridcontainer"></div>
+          <button id="playbutton">Play</button>
+          <input type="range" min="1" max="100" value="1" id="speedslider" />
+          <div id="gridsizecontainer">
+            <input
+              min="0"
+              type="number"
+              value="0"
+              id="gridsizeinputx"
+              placeholder="Taille horrizontale de la grille"
+            />
+            <input
+              min="0"
+              type="number"
+              value="0"
+              id="gridsizeinputy"
+              placeholder="Taille verticale de la grille"
+            />
+            <button id="gridsizebutton">Ok</button>
+          </div>
+          <div id="cellsizecontainer">
+            <input
+              type="number"
+              id="cellsizeinput"
+              placeholder="Taille d'une cellule"
+            />
+            <button id="cellsizebutton">Ok</button>
+          </div>
+          <button id="savebutton">Sauvegarder</button>
+          <button id="savelocalybutton">Sauvegarder localement</button>
+          <button id="loadbutton">Charger</button>
+        </div>
+      </div>
+    </main>
     <script type="module" src="./script.js"></script>
   </body>
 </html>
